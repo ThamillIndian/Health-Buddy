@@ -115,6 +115,32 @@ export default function MedicationManager({ userId, onClose }: MedicationManager
     }
   };
 
+  // Handle marking medication as taken
+  const handleMarkAsTaken = async (med: Medication) => {
+    try {
+      setLoading(true);
+      
+      await apiClient.logEvent(userId, {
+        type: 'medication',
+        payload: { 
+          action: 'taken', 
+          medication_id: med.id,
+          medication_name: med.name,
+          medication_strength: med.strength
+        },
+        source: 'web',
+        language: 'en',
+      });
+
+      setMessage(`✅ ${med.name} marked as taken!`);
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error: any) {
+      setMessage('❌ ' + (error.response?.data?.detail || 'Failed to log medication'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Add/remove time slots
   const addTimeSlot = () => {
     setTimes([...times, '12:00']);
@@ -212,8 +238,20 @@ export default function MedicationManager({ userId, onClose }: MedicationManager
                   <p className="text-gray-700">⏰ Times: {med.times.join(', ')}</p>
                 </div>
 
+                {/* Mark as Taken Button */}
+                <div className="mt-3">
+                  <button
+                    onClick={() => handleMarkAsTaken(med)}
+                    disabled={loading}
+                    className="w-full bg-green-600 text-white px-4 py-2 rounded font-semibold hover:bg-green-700 disabled:bg-gray-400 transition flex items-center justify-center gap-2"
+                  >
+                    <span>✅</span>
+                    <span>Mark as Taken</span>
+                  </button>
+                </div>
+
                 {med.notes && (
-                  <div className="text-sm text-gray-600 bg-yellow-50 p-2 rounded">
+                  <div className="text-sm text-gray-600 bg-yellow-50 p-2 rounded mt-2">
                     <p className="font-medium">Notes:</p>
                     <p>{med.notes}</p>
                   </div>

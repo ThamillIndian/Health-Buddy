@@ -110,6 +110,87 @@ async def get_dashboard(user_id: str, days: int = 7, db: Session = Depends(get_d
     if glucose_readings:
         avg_glucose = sum(glucose_readings) / len(glucose_readings)
     
+    # Calculate trends by comparing recent vs older readings
+    bp_trend = "stable"
+    glucose_trend = "stable"
+    
+    # Get readings with timestamps for trend calculation
+    bp_readings_with_dates = []
+    glucose_readings_with_dates = []
+    
+    for event in vitals:
+        payload = event.payload
+        event_date = event.timestamp.date()
+        
+        # Extract BP with date
+        if payload.get("bp"):
+            bp_str = payload.get("bp", "")
+            if "/" in bp_str:
+                try:
+                    systolic, diastolic = map(int, bp_str.split("/"))
+                    bp_readings_with_dates.append({
+                        "systolic": systolic,
+                        "diastolic": diastolic,
+                        "date": event_date
+                    })
+                except:
+                    pass
+        
+        # Extract glucose with date
+        if payload.get("glucose") is not None:
+            glucose_value = payload.get("glucose")
+            if isinstance(glucose_value, (int, float)) and glucose_value > 0:
+                glucose_readings_with_dates.append({
+                    "value": float(glucose_value),
+                    "date": event_date
+                })
+    
+    # Calculate BP trend
+    if len(bp_readings_with_dates) >= 2:
+        today = datetime.utcnow().date()
+        recent_cutoff = today - timedelta(days=3)
+        older_cutoff = today - timedelta(days=6)
+        
+        recent_bp = [r["systolic"] for r in bp_readings_with_dates if r["date"] >= recent_cutoff]
+        older_bp = [r["systolic"] for r in bp_readings_with_dates if older_cutoff <= r["date"] < recent_cutoff]
+        
+        if recent_bp and older_bp:
+            recent_avg = sum(recent_bp) / len(recent_bp)
+            older_avg = sum(older_bp) / len(older_bp)
+            
+            # Use 5% threshold to determine trend
+            change_pct = ((recent_avg - older_avg) / older_avg * 100) if older_avg > 0 else 0
+            
+            if change_pct > 5:
+                bp_trend = "increasing"
+            elif change_pct < -5:
+                bp_trend = "decreasing"
+            else:
+                bp_trend = "stable"
+    
+    # Calculate glucose trend
+    if len(glucose_readings_with_dates) >= 2:
+        today = datetime.utcnow().date()
+        recent_cutoff = today - timedelta(days=3)
+        older_cutoff = today - timedelta(days=6)
+        
+        recent_glucose = [r["value"] for r in glucose_readings_with_dates if r["date"] >= recent_cutoff]
+        older_glucose = [r["value"] for r in glucose_readings_with_dates if older_cutoff <= r["date"] < recent_cutoff]
+        
+        if recent_glucose and older_glucose:
+            recent_avg = sum(recent_glucose) / len(recent_glucose)
+            older_avg = sum(older_glucose) / len(older_glucose)
+            
+            # Use 5% threshold to determine trend
+            change_pct = ((recent_avg - older_avg) / older_avg * 100) if older_avg > 0 else 0
+            
+            if change_pct > 5:
+                glucose_trend = "increasing"
+            elif change_pct < -5:
+                glucose_trend = "decreasing"
+            else:
+                glucose_trend = "stable"
+    
     # Get alerts
     from app.models import Alert
     alerts = db.query(Alert).filter(
@@ -119,14 +200,82 @@ async def get_dashboard(user_id: str, days: int = 7, db: Session = Depends(get_d
     
     recent_symptoms = [e.payload.get("name", "unknown") for e in symptoms[:3]]
     
+    # Calculate real adherence from AdherenceLog
+    # Only count doses that were due during the period (scheduled_time in the past)
+    from app.models import AdherenceLog, Medication
+    period_end = datetime.utcnow()
+    
+    # Get adherence logs where scheduled_time was due during the period
+    adherence_logs = db.query(AdherenceLog).filter(
+        AdherenceLog.user_id == user_id,
+        AdherenceLog.scheduled_time >= since,
+        AdherenceLog.scheduled_time <= period_end  # Only count doses that were due (not future)
+    ).all()
+    
+    adherence_pct = None
+    if adherence_logs:
+        total_due = len(adherence_logs)
+        taken_logs = len([log for log in adherence_logs if log.status == "taken"])
+        adherence_pct = (taken_logs / total_due * 100) if total_due > 0 else 0.0
+    else:
+        # Fallback: Calculate from medication events (only "taken" events count as positive)
+        med_events = [e for e in events if e.type == "medication"]
+        if med_events:
+            # Count only "taken" events as positive adherence
+            taken_events = len([e for e in med_events if e.payload.get("action") == "taken"])
+            # For fallback, we assume all medication events represent expected doses
+            adherence_pct = (taken_events / len(med_events) * 100) if med_events else 0.0
+        else:
+            adherence_pct = 0.0
+    
+    # Calculate days_logged (unique days with events)
+    unique_dates = set()
+    for event in events:
+        event_date = event.timestamp.date()
+        unique_dates.add(event_date)
+    days_logged = len(unique_dates)
+    
+    # Calculate consecutive_streak (consecutive days with logging)
+    if unique_dates:
+        sorted_dates = sorted(unique_dates, reverse=True)
+        consecutive_streak = 1
+        today = datetime.utcnow().date()
+        
+        # Check if today has logging
+        if today in sorted_dates:
+            # Count backwards from today
+            for i in range(1, len(sorted_dates)):
+                expected_date = today - timedelta(days=i)
+                if expected_date in sorted_dates:
+                    consecutive_streak += 1
+                else:
+                    break
+        else:
+            # If today doesn't have logging, check from yesterday
+            yesterday = today - timedelta(days=1)
+            if yesterday in sorted_dates:
+                consecutive_streak = 1
+                for i in range(2, len(sorted_dates) + 1):
+                    expected_date = yesterday - timedelta(days=i-1)
+                    if expected_date in sorted_dates:
+                        consecutive_streak += 1
+                    else:
+                        break
+            else:
+                consecutive_streak = 0
+    else:
+        consecutive_streak = 0
+    
     metrics = DashboardMetric(
-        adherence_pct=90.0,  # TODO: Calculate from AdherenceLog
+        adherence_pct=adherence_pct,
         avg_bp=avg_bp,
-        bp_trend="stable",
+        bp_trend=bp_trend,
         avg_glucose=avg_glucose,
-        glucose_trend="stable",
+        glucose_trend=glucose_trend,
         recent_symptoms=recent_symptoms,
-        alerts_count=len([a for a in alerts if a.level in ["amber", "red"]])
+        alerts_count=len([a for a in alerts if a.level in ["amber", "red"]]),
+        days_logged=days_logged,
+        consecutive_streak=consecutive_streak
     )
     
     return DashboardResponse(

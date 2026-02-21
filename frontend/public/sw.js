@@ -2,6 +2,7 @@
 // Handles offline caching, background sync, and medication reminders
 
 const CACHE_NAME = 'health-buddy-v1';
+const API_BASE_URL = 'http://localhost:8000'; // Backend API URL
 const URLS_TO_CACHE = [
   '/',
   '/dashboard',
@@ -176,8 +177,8 @@ async function checkAndNotifyMedications() {
 
     console.log('📋 Fetching medications for user:', userId);
     
-    // Fetch user's medications
-    const response = await fetch(`/api/users/${userId}/medications`, {
+    // Fetch user's medications from backend
+    const response = await fetch(`${API_BASE_URL}/api/users/${userId}/medications`, {
       cache: 'no-store' // Always fetch fresh data, don't use cache
     });
     
@@ -312,6 +313,8 @@ self.addEventListener('notificationclick', (event) => {
         payload: {
           action: 'taken',
           medication_id: data.medicationId,
+          medication_name: data.medicationName || 'Unknown',
+          medication_strength: data.medicationStrength || '',
           source: 'notification',
         },
         source: 'web',

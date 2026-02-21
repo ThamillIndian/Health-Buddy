@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Header from '@/app/components/Header';
 import { apiClient } from '@/app/utils/api';
+import { MEDICATIONS } from '@/app/utils/constants';
 
 interface HealthEvent {
   id: string;
@@ -132,9 +133,59 @@ export default function HealthRecordsPage() {
                         </div>
                       )}
                       {event.type === 'medication' && (
-                        <p>
-                          <span className="font-medium">{event.payload.action || 'Action'}</span>: {event.payload.medication_id || 'Medication'}
-                        </p>
+                        <div>
+                          <p>
+                            <span className="font-medium capitalize">{event.payload.action || 'Action'}</span>
+                            {(() => {
+                              // First try to use medication_name from payload
+                              let medName = event.payload.medication_name;
+                              let medStrength = event.payload.medication_strength;
+                              
+                              // If name is missing, try to find it from MEDICATIONS constant
+                              if (!medName && event.payload.medication_id) {
+                                const foundMed = MEDICATIONS.find(m => m.id === event.payload.medication_id);
+                                if (foundMed) {
+                                  // Extract name and strength from library entry
+                                  const nameParts = foundMed.name.split(' ');
+                                  if (nameParts.length > 1) {
+                                    const lastPart = nameParts[nameParts.length - 1];
+                                    if (lastPart.match(/\d+(mg|mcg|IU)/i)) {
+                                      medStrength = lastPart;
+                                      medName = nameParts.slice(0, -1).join(' ');
+                                    } else {
+                                      medName = foundMed.name;
+                                    }
+                                  } else {
+                                    medName = foundMed.name;
+                                  }
+                                } else {
+                                  // Extract readable name from ID (e.g., "glibenclamide_5" -> "Glibenclamide")
+                                  const parts = event.payload.medication_id.split('_');
+                                  if (parts.length > 0) {
+                                    medName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+                                    if (parts.length > 1 && !medStrength) {
+                                      const strengthPart = parts[1];
+                                      if (strengthPart.match(/^\d+$/)) {
+                                        medStrength = strengthPart + 'mg';
+                                      }
+                                    }
+                                  } else {
+                                    medName = event.payload.medication_id;
+                                  }
+                                }
+                              }
+                              
+                              // Display the medication name (no "Medication ID" prefix)
+                              if (medName) {
+                                return (
+                                  <span>: <span className="font-semibold text-blue-700">{medName}</span> {medStrength && <span className="text-gray-600">({medStrength})</span>}</span>
+                                );
+                              } else {
+                                return <span>: Unknown Medication</span>;
+                              }
+                            })()}
+                          </p>
+                        </div>
                       )}
                       {event.type === 'symptom' && (
                         <p>

@@ -148,9 +148,9 @@ export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
         {/* Achievement Badges */}
         <AchievementBadges
           adherence={dashboard.metrics.adherence_pct || 0}
-          daysLogged={7}
+          daysLogged={dashboard.metrics.days_logged || 0}
           alertsFree={statusColor === 'green'}
-          streak={5}
+          streak={dashboard.metrics.consecutive_streak || 0}
         />
 
         {/* Metrics Grid - Enhanced Cards */}

@@ -26,9 +26,25 @@ async def get_daily_tip(user_id: str, db: Session = Depends(get_db)):
         Event.timestamp >= today_start
     ).all()
     
-    # Calculate adherence (simplified)
+    # Calculate real adherence from today's medication events
     med_events = [e for e in today_events if e.type == "medication"]
-    adherence_pct = 100.0 if med_events else 50.0
+    if med_events:
+        taken_events = len([e for e in med_events if e.payload.get("action") == "taken"])
+        adherence_pct = (taken_events / len(med_events) * 100) if med_events else 0.0
+    else:
+        # If no events today, check last 7 days for overall adherence
+        from datetime import timedelta
+        week_start = datetime.utcnow() - timedelta(days=7)
+        week_events = db.query(Event).filter(
+            Event.user_id == user_id,
+            Event.type == "medication",
+            Event.timestamp >= week_start
+        ).all()
+        if week_events:
+            taken_week = len([e for e in week_events if e.payload.get("action") == "taken"])
+            adherence_pct = (taken_week / len(week_events) * 100) if week_events else 0.0
+        else:
+            adherence_pct = 0.0
     
     # Get latest glucose if available
     avg_glucose = None
@@ -97,10 +113,26 @@ async def get_doctor_summary(user_id: str, days: int = 7, db: Session = Depends(
         Alert.timestamp >= since
     ).all()
     
-    # Calculate metrics
+    # Calculate metrics from real data
     symptoms_count = len([e for e in events if e.type == "symptom"])
     med_events = [e for e in events if e.type == "medication"]
-    adherence_pct = (len([m for m in med_events if m.payload.get("taken")]) / max(len(med_events), 1) * 100) if med_events else 0
+    
+    # Calculate real adherence - check for "action" == "taken"
+    if med_events:
+        taken_events = len([m for m in med_events if m.payload.get("action") == "taken"])
+        adherence_pct = (taken_events / len(med_events) * 100) if med_events else 0.0
+    else:
+        # Try to get from AdherenceLog if no medication events
+        from app.models import AdherenceLog
+        adherence_logs = db.query(AdherenceLog).filter(
+            AdherenceLog.user_id == user_id,
+            AdherenceLog.created_at >= since
+        ).all()
+        if adherence_logs:
+            taken_logs = len([log for log in adherence_logs if log.status == "taken"])
+            adherence_pct = (taken_logs / len(adherence_logs) * 100) if adherence_logs else 0.0
+        else:
+            adherence_pct = 0.0
     
     # Get max risk level
     risk_level = "green"

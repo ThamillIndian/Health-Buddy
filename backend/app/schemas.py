@@ -101,6 +101,8 @@ class DashboardMetric(BaseModel):
     glucose_trend: str = "stable"
     recent_symptoms: List[str] = []
     alerts_count: int = 0
+    days_logged: int = 0  # Number of unique days with logged events
+    consecutive_streak: int = 0  # Consecutive days with logging
 
 class DashboardResponse(BaseModel):
     status: str  # green, amber, red

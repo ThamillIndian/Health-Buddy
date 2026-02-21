@@ -67,11 +67,63 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
     try {
       setLoading(true);
       
-      // Log each selected medication
+      // Log each selected medication with name included
       for (const medId of selectedMeds) {
+        // Find medication name from saved medications or library
+        const savedMed = savedMedications.find(m => m.id === medId);
+        const libraryMed = MEDICATIONS.find(m => m.id === medId);
+        
+        // Better name extraction with fallback
+        let medName = savedMed?.name || libraryMed?.name || 'Unknown';
+        let medStrength = savedMed?.strength || '';
+        
+        // If name is still Unknown, try to extract from ID
+        if (medName === 'Unknown' && medId) {
+          // Try to parse name from ID (e.g., "glibenclamide_5" -> "Glibenclamide")
+          const parts = medId.split('_');
+          if (parts.length > 0) {
+            // Capitalize first letter and make it readable
+            medName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+            // If there's a number part, try to extract strength
+            if (parts.length > 1 && !medStrength) {
+              const strengthPart = parts[1];
+              // Check if it's a number (like "5", "50", "100")
+              if (strengthPart.match(/^\d+$/)) {
+                medStrength = strengthPart + 'mg';
+              } else {
+                medStrength = strengthPart;
+              }
+            }
+          }
+        }
+        
+        // If library med found but name includes strength, extract it
+        if (libraryMed && libraryMed.name && !medStrength) {
+          // Library names are like "Glibenclamide 5mg" - extract strength
+          const nameParts = libraryMed.name.split(' ');
+          if (nameParts.length > 1) {
+            const lastPart = nameParts[nameParts.length - 1];
+            if (lastPart.match(/\d+(mg|mcg|IU)/i)) {
+              medStrength = lastPart;
+              medName = nameParts.slice(0, -1).join(' ');
+            }
+          }
+        }
+        
+        // Ensure we have a valid name (never use ID as fallback in display)
+        if (!medName || medName === 'Unknown') {
+          // Last resort: use ID but format it nicely
+          medName = medId.split('_')[0].charAt(0).toUpperCase() + medId.split('_')[0].slice(1);
+        }
+        
         await apiClient.logEvent(userId, {
           type: 'medication',
-          payload: { action: 'taken', medication_id: medId },
+          payload: { 
+            action: 'taken', 
+            medication_id: medId,
+            medication_name: medName,
+            medication_strength: medStrength
+          },
           source: 'web',
           language: 'en',
         });

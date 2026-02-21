@@ -169,9 +169,10 @@ export class NotificationService {
       }
 
       // Fetch medications
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const response = await fetch(
-        `/api/users/${userId}/medications`,
-        { cache: 'no-cache' }
+        `${apiUrl}/api/users/${userId}/medications`,
+        { cache: 'no-store' }
       );
 
       if (!response.ok) {
@@ -237,7 +238,8 @@ export class NotificationService {
       notification.onclick = async () => {
         window.focus();
         // Log medication as taken
-        await fetch(`/api/users/${userId}/events`, {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        await fetch(`${apiUrl}/api/users/${userId}/events`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -245,6 +247,8 @@ export class NotificationService {
             payload: {
               action: 'taken',
               medication_id: medication.id,
+              medication_name: medication.name,
+              medication_strength: medication.strength,
               source: 'notification',
             },
             source: 'web',
