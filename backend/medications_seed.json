@@ -1,0 +1,436 @@
+{
+  "medications": [
+    {
+      "id": "metformin_500",
+      "name": "Metformin",
+      "strength": "500mg",
+      "category": "diabetes",
+      "frequency_options": ["once_daily", "twice_daily", "thrice_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "insulin_nph",
+      "name": "Insulin NPH",
+      "strength": "100 IU/ml",
+      "category": "diabetes",
+      "frequency_options": ["once_daily", "twice_daily"],
+      "icon": "💉"
+    },
+    {
+      "id": "glibenclamide_5",
+      "name": "Glibenclamide",
+      "strength": "5mg",
+      "category": "diabetes",
+      "frequency_options": ["once_daily", "twice_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "pioglitazone_30",
+      "name": "Pioglitazone",
+      "strength": "30mg",
+      "category": "diabetes",
+      "frequency_options": ["once_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "sitagliptin_100",
+      "name": "Sitagliptin",
+      "strength": "100mg",
+      "category": "diabetes",
+      "frequency_options": ["once_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "vildagliptin_50",
+      "name": "Vildagliptin",
+      "strength": "50mg",
+      "category": "diabetes",
+      "frequency_options": ["twice_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "amlodipine_5",
+      "name": "Amlodipine",
+      "strength": "5mg",
+      "category": "hypertension",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "lisinopril_10",
+      "name": "Lisinopril",
+      "strength": "10mg",
+      "category": "hypertension",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "losartan_50",
+      "name": "Losartan",
+      "strength": "50mg",
+      "category": "hypertension",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "atenolol_50",
+      "name": "Atenolol",
+      "strength": "50mg",
+      "category": "hypertension",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "hydrochlorothiazide_25",
+      "name": "Hydrochlorothiazide",
+      "strength": "25mg",
+      "category": "hypertension",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "spironolactone_25",
+      "name": "Spironolactone",
+      "strength": "25mg",
+      "category": "hypertension",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "salbutamol_inhaler",
+      "name": "Salbutamol Inhaler",
+      "strength": "100 mcg/dose",
+      "category": "asthma",
+      "frequency_options": ["as_needed"],
+      "icon": "🫁"
+    },
+    {
+      "id": "budesonide_inhaler",
+      "name": "Budesonide Inhaler",
+      "strength": "200 mcg/dose",
+      "category": "asthma",
+      "frequency_options": ["twice_daily"],
+      "icon": "🫁"
+    },
+    {
+      "id": "formoterol_inhaler",
+      "name": "Formoterol Inhaler",
+      "strength": "12 mcg/dose",
+      "category": "asthma",
+      "frequency_options": ["twice_daily"],
+      "icon": "🫁"
+    },
+    {
+      "id": "montelukast_10",
+      "name": "Montelukast",
+      "strength": "10mg",
+      "category": "asthma",
+      "frequency_options": ["once_daily"],
+      "icon": "🫁"
+    },
+    {
+      "id": "levothyroxine_50",
+      "name": "Levothyroxine",
+      "strength": "50 mcg",
+      "category": "thyroid",
+      "frequency_options": ["once_daily"],
+      "icon": "🦴"
+    },
+    {
+      "id": "levothyroxine_75",
+      "name": "Levothyroxine",
+      "strength": "75 mcg",
+      "category": "thyroid",
+      "frequency_options": ["once_daily"],
+      "icon": "🦴"
+    },
+    {
+      "id": "levothyroxine_100",
+      "name": "Levothyroxine",
+      "strength": "100 mcg",
+      "category": "thyroid",
+      "frequency_options": ["once_daily"],
+      "icon": "🦴"
+    },
+    {
+      "id": "aspirin_325",
+      "name": "Aspirin",
+      "strength": "325mg",
+      "category": "heart",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "atorvastatin_20",
+      "name": "Atorvastatin",
+      "strength": "20mg",
+      "category": "heart",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "clopidogrel_75",
+      "name": "Clopidogrel",
+      "strength": "75mg",
+      "category": "heart",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "isosorbide_10",
+      "name": "Isosorbide Dinitrate",
+      "strength": "10mg",
+      "category": "heart",
+      "frequency_options": ["twice_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "vitamin_b12_1000",
+      "name": "Vitamin B12",
+      "strength": "1000 mcg",
+      "category": "supplement",
+      "frequency_options": ["once_daily"],
+      "icon": "💊"
+    },
+    {
+      "id": "folic_acid_5",
+      "name": "Folic Acid",
+      "strength": "5mg",
+      "category": "supplement",
+      "frequency_options": ["once_daily"],
+      "icon": "💊"
+    },
+    {
+      "id": "calcium_500",
+      "name": "Calcium Carbonate",
+      "strength": "500mg",
+      "category": "supplement",
+      "frequency_options": ["twice_daily"],
+      "icon": "🦴"
+    },
+    {
+      "id": "vitamin_d3_1000",
+      "name": "Vitamin D3",
+      "strength": "1000 IU",
+      "category": "supplement",
+      "frequency_options": ["once_daily"],
+      "icon": "☀️"
+    },
+    {
+      "id": "iron_ferrous",
+      "name": "Ferrous Sulfate",
+      "strength": "325mg",
+      "category": "supplement",
+      "frequency_options": ["once_daily"],
+      "icon": "💊"
+    },
+    {
+      "id": "omeprazole_20",
+      "name": "Omeprazole",
+      "strength": "20mg",
+      "category": "gastrointestinal",
+      "frequency_options": ["once_daily"],
+      "icon": "🤢"
+    },
+    {
+      "id": "pantoprazole_40",
+      "name": "Pantoprazole",
+      "strength": "40mg",
+      "category": "gastrointestinal",
+      "frequency_options": ["once_daily"],
+      "icon": "🤢"
+    },
+    {
+      "id": "ranitidine_150",
+      "name": "Ranitidine",
+      "strength": "150mg",
+      "category": "gastrointestinal",
+      "frequency_options": ["twice_daily"],
+      "icon": "🤢"
+    },
+    {
+      "id": "antacid_gel",
+      "name": "Aluminum Hydroxide Gel",
+      "strength": "200ml",
+      "category": "gastrointestinal",
+      "frequency_options": ["as_needed"],
+      "icon": "🤢"
+    },
+    {
+      "id": "metoprolol_50",
+      "name": "Metoprolol",
+      "strength": "50mg",
+      "category": "hypertension",
+      "frequency_options": ["twice_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "nifedipine_30",
+      "name": "Nifedipine XL",
+      "strength": "30mg",
+      "category": "hypertension",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "ramipril_5",
+      "name": "Ramipril",
+      "strength": "5mg",
+      "category": "hypertension",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "valsartan_80",
+      "name": "Valsartan",
+      "strength": "80mg",
+      "category": "hypertension",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "glyburide_5",
+      "name": "Glyburide",
+      "strength": "5mg",
+      "category": "diabetes",
+      "frequency_options": ["twice_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "repaglinide_1",
+      "name": "Repaglinide",
+      "strength": "1mg",
+      "category": "diabetes",
+      "frequency_options": ["thrice_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "acarbose_50",
+      "name": "Acarbose",
+      "strength": "50mg",
+      "category": "diabetes",
+      "frequency_options": ["thrice_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "alogliptin_25",
+      "name": "Alogliptin",
+      "strength": "25mg",
+      "category": "diabetes",
+      "frequency_options": ["once_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "dulaglutide_1.5",
+      "name": "Dulaglutide",
+      "strength": "1.5mg",
+      "category": "diabetes",
+      "frequency_options": ["once_weekly"],
+      "icon": "💉"
+    },
+    {
+      "id": "dapagliflozin_10",
+      "name": "Dapagliflozin",
+      "strength": "10mg",
+      "category": "diabetes",
+      "frequency_options": ["once_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "empagliflozin_10",
+      "name": "Empagliflozin",
+      "strength": "10mg",
+      "category": "diabetes",
+      "frequency_options": ["once_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "canagliflozin_100",
+      "name": "Canagliflozin",
+      "strength": "100mg",
+      "category": "diabetes",
+      "frequency_options": ["once_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "pioglitazone_45",
+      "name": "Pioglitazone",
+      "strength": "45mg",
+      "category": "diabetes",
+      "frequency_options": ["once_daily"],
+      "icon": "📊"
+    },
+    {
+      "id": "felodipine_5",
+      "name": "Felodipine",
+      "strength": "5mg",
+      "category": "hypertension",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "diltiazem_120",
+      "name": "Diltiazem",
+      "strength": "120mg",
+      "category": "hypertension",
+      "frequency_options": ["thrice_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "verapamil_120",
+      "name": "Verapamil",
+      "strength": "120mg",
+      "category": "hypertension",
+      "frequency_options": ["thrice_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "doxazosin_2",
+      "name": "Doxazosin",
+      "strength": "2mg",
+      "category": "hypertension",
+      "frequency_options": ["once_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "clonidine_0.1",
+      "name": "Clonidine",
+      "strength": "0.1mg",
+      "category": "hypertension",
+      "frequency_options": ["twice_daily"],
+      "icon": "❤️"
+    },
+    {
+      "id": "tiotropium_inhaler",
+      "name": "Tiotropium Inhaler",
+      "strength": "18 mcg/dose",
+      "category": "asthma",
+      "frequency_options": ["once_daily"],
+      "icon": "🫁"
+    },
+    {
+      "id": "theophylline_200",
+      "name": "Theophylline",
+      "strength": "200mg",
+      "category": "asthma",
+      "frequency_options": ["twice_daily"],
+      "icon": "🫁"
+    },
+    {
+      "id": "roflumilast_250",
+      "name": "Roflumilast",
+      "strength": "250 mcg",
+      "category": "asthma",
+      "frequency_options": ["once_daily"],
+      "icon": "🫁"
+    },
+    {
+      "id": "propranolol_40",
+      "name": "Propranolol",
+      "strength": "40mg",
+      "category": "thyroid",
+      "frequency_options": ["thrice_daily"],
+      "icon": "❤️"
+    }
+  ]
+}
