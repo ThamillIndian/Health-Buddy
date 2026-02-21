@@ -47,6 +47,30 @@ export const apiClient = {
     api.post(`/users/${userId}/medications/${medId}/mark-taken`, scheduledTime ? { scheduled_time: scheduledTime } : {}),
   checkMissedMedications: (userId: string) => 
     api.post(`/users/${userId}/medications/check-missed`),
+
+  // Voice/Transcription
+  transcribeAudio: (audioFile: File, language: string = 'en-IN', mode: string = 'transcribe') => {
+    const formData = new FormData();
+    formData.append('file', audioFile);
+    formData.append('language', language);
+    formData.append('mode', mode);
+    return api.post('/transcribe', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  normalizeText: (text: string, language: string = 'en') => {
+    const formData = new FormData();
+    formData.append('text', text);
+    formData.append('language', language);
+    return api.post('/normalize', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };
 
 export default api;

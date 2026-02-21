@@ -9,3 +9,4 @@ reportlab==4.0.7
 requests==2.31.0
 python-multipart==0.0.6
 supabase==2.0.2
+sarvamai>=1.0.0

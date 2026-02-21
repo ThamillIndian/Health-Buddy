@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '@/app/utils/api';
 import { MEDICATIONS, SYMPTOMS, CRITICAL_SYMPTOMS } from '@/app/utils/constants';
 import CriticalSymptomAlert from './CriticalSymptomAlert';
+import VoiceInput from './VoiceInput';
 
 interface QuickLogProps {
   userId: string;
@@ -40,6 +41,13 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
   // Critical symptom alert
   const [showCriticalAlert, setShowCriticalAlert] = useState(false);
   const [criticalSymptomData, setCriticalSymptomData] = useState<{ name: string; severity: number } | null>(null);
+
+  // Voice input mode
+  const [voiceMode, setVoiceMode] = useState<{ [key: string]: boolean }>({
+    vitals: false,
+    symptom: false,
+    med: false,
+  });
 
   // Load saved medications on mount
   useEffect(() => {
@@ -200,6 +208,151 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
     }
   };
 
+  // Handle voice transcription for vitals
+  const handleVitalsVoiceTranscribe = (text: string) => {
+    setMessage(`🎤 Transcribed: "${text}"`);
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleVitalsVoiceNormalize = (event: any) => {
+    if (event && event.type === 'vital') {
+      const payload = event.payload;
+      
+      // Auto-fill BP
+      if (payload.bp) {
+        const [sys, dia] = payload.bp.split('/');
+        setSystolic(sys);
+        setDiastolic(dia);
+      }
+      
+      // Auto-fill glucose
+      if (payload.glucose) {
+        setGlucose(payload.glucose.toString());
+      }
+      
+      // Auto-fill weight
+      if (payload.weight) {
+        setWeight(payload.weight.toString());
+      }
+      
+      // Auto-fill peak flow
+      if (payload.peak_flow) {
+        setPeakFlow(payload.peak_flow.toString());
+      }
+      
+      setMessage('✅ Form auto-filled from voice! Review and submit.');
+      setTimeout(() => setMessage(''), 3000);
+    }
+  };
+
+  // Handle voice transcription for symptoms
+  const handleSymptomVoiceTranscribe = (text: string) => {
+    setMessage(`🎤 Transcribed: "${text}"`);
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleSymptomVoiceNormalize = (event: any) => {
+    if (event && event.type === 'symptom') {
+      const payload = event.payload;
+      
+      // Auto-fill symptom name
+      if (payload.name) {
+        // Try to find matching symptom from SYMPTOMS list
+        const foundSymptom = SYMPTOMS.find(s => 
+          s.name.toLowerCase() === payload.name.toLowerCase()
+        );
+        if (foundSymptom) {
+          setSelectedSymptom(foundSymptom.name);
+        } else {
+          setSelectedSymptom(payload.name);
+        }
+      }
+      
+      // Auto-fill severity
+      if (payload.severity) {
+        setSymptomSeverity(payload.severity);
+      }
+      
+      setMessage('✅ Symptom auto-filled from voice! Review and submit.');
+      setTimeout(() => setMessage(''), 3000);
+    }
+  };
+
+  // Handle voice transcription for medications
+  const handleMedVoiceTranscribe = (text: string) => {
+    setMessage(`🎤 Transcribed: "${text}"`);
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleMedVoiceNormalize = (event: any) => {
+    if (event && event.type === 'medication') {
+      const payload = event.payload;
+      
+      // Try to find medication by name
+      if (payload.medication_name) {
+        const foundMed = savedMedications.find(m => 
+          m.name.toLowerCase().includes(payload.medication_name.toLowerCase())
+        ) || MEDICATIONS.find(m => 
+          m.name.toLowerCase().includes(payload.medication_name.toLowerCase())
+        );
+        
+        if (foundMed && !selectedMeds.includes(foundMed.id)) {
+          toggleMedication(foundMed.id);
+          setMessage(`✅ ${foundMed.name} added from voice!`);
+          setTimeout(() => setMessage(''), 3000);
+        }
+      }
+    }
+  };
+
+  // Handle voice transcription for general note/voice input
+  const handleVoiceNoteTranscribe = (text: string) => {
+    setMessage(`🎤 Transcribed: "${text}"`);
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleVoiceNoteNormalize = async (event: any) => {
+    if (!event || !event.type) {
+      setMessage('⚠️ Could not understand the voice input. Please try again.');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Auto-log the event based on normalized type
+      const response = await apiClient.logEvent(userId, {
+        type: event.type,
+        payload: event.payload,
+        source: 'voice',
+        language: 'en',
+      });
+
+      // Handle critical symptoms
+      if (event.type === 'symptom' && response.data.critical_symptom) {
+        const symptomName = event.payload.name || 'Unknown';
+        const severity = event.payload.severity || 2;
+        setCriticalSymptomData({ name: symptomName, severity });
+        setShowCriticalAlert(true);
+        
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+      }
+
+      setMessage(`✅ ${event.type} logged successfully from voice!`);
+      setActiveTab(null);
+      onEventLogged?.();
+      
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error: any) {
+      setMessage('❌ ' + (error.response?.data?.detail || 'Failed to log event'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSymptomSubmit = async () => {
     if (!selectedSymptom) {
       setMessage('Please select a symptom');
@@ -303,7 +456,32 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
       {/* Med form - Multi-select with checkboxes */}
       {activeTab === 'med' && (
         <div className="bg-white p-4 rounded-lg border border-blue-200 mb-4">
-          <h3 className="font-semibold mb-3">💊 Select Medications (Multiple OK)</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">💊 Select Medications (Multiple OK)</h3>
+            <button
+              onClick={() => setVoiceMode({ ...voiceMode, med: !voiceMode.med })}
+              className={`px-3 py-1 rounded text-sm font-medium transition ${
+                voiceMode.med
+                  ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                  : 'bg-gray-100 text-gray-700 border border-gray-300'
+              }`}
+            >
+              {voiceMode.med ? '✏️ Switch to Form' : '🎤 Use Voice'}
+            </button>
+          </div>
+
+          {voiceMode.med ? (
+            <div className="mb-4">
+              <VoiceInput
+                userId={userId}
+                language="en-IN"
+                mode="transcribe"
+                onTranscribe={handleMedVoiceTranscribe}
+                onNormalize={handleMedVoiceNormalize}
+              />
+            </div>
+          ) : (
+            <>
           
           {/* Show saved medications first */}
           {savedMedications.length > 0 && (
@@ -355,13 +533,40 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
           >
             {loading ? 'Logging...' : `Confirm Taken (${selectedMeds.length})`}
           </button>
+            </>
+          )}
         </div>
       )}
 
       {/* Vitals form */}
       {activeTab === 'vitals' && (
         <div className="bg-white p-4 rounded-lg border border-blue-200 mb-4">
-          <h3 className="font-semibold mb-3">Enter Vitals</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">Enter Vitals</h3>
+            <button
+              onClick={() => setVoiceMode({ ...voiceMode, vitals: !voiceMode.vitals })}
+              className={`px-3 py-1 rounded text-sm font-medium transition ${
+                voiceMode.vitals
+                  ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                  : 'bg-gray-100 text-gray-700 border border-gray-300'
+              }`}
+            >
+              {voiceMode.vitals ? '✏️ Switch to Form' : '🎤 Use Voice'}
+            </button>
+          </div>
+
+          {voiceMode.vitals ? (
+            <div className="mb-4">
+              <VoiceInput
+                userId={userId}
+                language="en-IN"
+                mode="transcribe"
+                onTranscribe={handleVitalsVoiceTranscribe}
+                onNormalize={handleVitalsVoiceNormalize}
+              />
+            </div>
+          ) : (
+            <>
 
           <div className="mb-3">
             <label className="text-sm font-medium">Blood Pressure</label>
@@ -425,13 +630,40 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
           >
             {loading ? 'Logging...' : 'Log Vitals'}
           </button>
+            </>
+          )}
         </div>
       )}
 
       {/* Symptoms form */}
       {activeTab === 'symptom' && (
         <div className="bg-white p-4 rounded-lg border border-blue-200 mb-4">
-          <h3 className="font-semibold mb-3">Select Symptom</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">Select Symptom</h3>
+            <button
+              onClick={() => setVoiceMode({ ...voiceMode, symptom: !voiceMode.symptom })}
+              className={`px-3 py-1 rounded text-sm font-medium transition ${
+                voiceMode.symptom
+                  ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                  : 'bg-gray-100 text-gray-700 border border-gray-300'
+              }`}
+            >
+              {voiceMode.symptom ? '✏️ Switch to Form' : '🎤 Use Voice'}
+            </button>
+          </div>
+
+          {voiceMode.symptom ? (
+            <div className="mb-4">
+              <VoiceInput
+                userId={userId}
+                language="en-IN"
+                mode="transcribe"
+                onTranscribe={handleSymptomVoiceTranscribe}
+                onNormalize={handleSymptomVoiceNormalize}
+              />
+            </div>
+          ) : (
+            <>
 
           <select
             value={selectedSymptom}
@@ -472,6 +704,36 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
           >
             {loading ? 'Logging...' : 'Log Symptom'}
           </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Voice/Note form */}
+      {activeTab === 'note' && (
+        <div className="bg-white p-4 rounded-lg border border-blue-200 mb-4">
+          <h3 className="font-semibold mb-3">🎤 Voice Input</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Speak naturally about your health. We'll automatically detect if it's a vital, symptom, or medication.
+          </p>
+          
+          <VoiceInput
+            userId={userId}
+            language="en-IN"
+            mode="transcribe"
+            onTranscribe={handleVoiceNoteTranscribe}
+            onNormalize={handleVoiceNoteNormalize}
+          />
+          
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs text-gray-700">
+              <strong>💡 Examples:</strong><br/>
+              • "My blood pressure is 140 over 90"<br/>
+              • "I have a headache, severity 3"<br/>
+              • "I took my metformin"<br/>
+              • "My glucose is 120"
+            </p>
+          </div>
         </div>
       )}
 
