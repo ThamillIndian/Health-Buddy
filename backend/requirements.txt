@@ -8,5 +8,4 @@ llama-cpp-python==0.2.18
 reportlab==4.0.7
 requests==2.31.0
 python-multipart==0.0.6
-cors-headers==1.0.0
-uvicorn==0.24.0
+supabase==2.0.2
