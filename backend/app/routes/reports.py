@@ -1,5 +1,6 @@
 """
 Report generation routes
+Uses clinical standards from WHO, IDA, and ESC/ESH guidelines
 """
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -8,6 +9,7 @@ from datetime import datetime, timedelta
 from app.database import get_db
 from app.models import User, Event, Alert, Report
 from app.schemas import ReportRequest, ReportResponse
+from app.constants.clinical_standards import CLINICAL_DISCLAIMER
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -74,6 +76,23 @@ async def generate_report(user_id: str, request: ReportRequest, db: Session = De
 @router.get("/reports/{report_id}/download")
 async def download_report(report_id: str, db: Session = Depends(get_db)):
     """Download PDF report"""
+    
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    if not os.path.exists(report.file_path):
+        raise HTTPException(status_code=404, detail="Report file not found")
+    
+    return FileResponse(
+        path=report.file_path,
+        filename=f"health_report_{report.period_end.strftime('%Y-%m-%d')}.pdf",
+        media_type="application/pdf"
+    )
+
+@router.get("/reports/{report_id}/pdf")
+async def get_report_pdf(report_id: str, db: Session = Depends(get_db)):
+    """Get PDF report (alias for download)"""
     
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
@@ -191,6 +210,48 @@ def _generate_pdf(user, events, alerts, period_start, period_end):
         styles['Normal']
     )
     story.append(recommendation)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Clinical Disclaimer
+    story.append(PageBreak())
+    story.append(Paragraph("Clinical Data Sources & Disclaimer", styles['Heading2']))
+    
+    disclaimer_style = ParagraphStyle(
+        'DisclaimerStyle',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.HexColor('#666666'),
+        leftIndent=10,
+        rightIndent=10,
+        spaceAfter=10
+    )
+    
+    disclaimer_text = CLINICAL_DISCLAIMER.replace('\n', '<br/>')
+    story.append(Paragraph(disclaimer_text, disclaimer_style))
+    
+    story.append(Spacer(1, 0.2*inch))
+    story.append(Paragraph("Clinical References Used", styles['Heading3']))
+    
+    references_data = [
+        ["Standard", "Source", "URL"],
+        ["Glucose Range", "IDA (Indian Diabetes Association)", "https://www.indiandiabetics.org"],
+        ["Blood Pressure", "ESC/ESH (European Guidelines)", "https://www.escardio.org"],
+        ["Medication Adherence", "WHO (World Health Organization)", "https://www.who.int"],
+        ["Risk Scoring", "Clinical Risk Assessment Framework", "N/A"]
+    ]
+    
+    ref_table = Table(references_data, colWidths=[1.5*inch, 2*inch, 2.5*inch])
+    ref_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9ca3af')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey)
+    ]))
+    
+    story.append(ref_table)
     
     # Build PDF
     doc.build(story)

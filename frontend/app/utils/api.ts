@@ -30,6 +30,17 @@ export const apiClient = {
     api.post(`/users/${userId}/reports`, { period_days: periodDays }),
   downloadReport: (reportId: string) => 
     api.get(`/reports/${reportId}/download`, { responseType: 'blob' }),
+
+  // Medications
+  getMedications: (userId: string) => api.get(`/users/${userId}/medications`),
+  getMedication: (userId: string, medId: string) => api.get(`/users/${userId}/medications/${medId}`),
+  addMedication: (userId: string, med: any) => api.post(`/users/${userId}/medications`, med),
+  updateMedication: (userId: string, medId: string, med: any) => 
+    api.put(`/users/${userId}/medications/${medId}`, med),
+  deleteMedication: (userId: string, medId: string) => 
+    api.delete(`/users/${userId}/medications/${medId}`),
+  activateMedication: (userId: string, medId: string) => 
+    api.post(`/users/${userId}/medications/${medId}/activate`),
 };
 
 export default api;

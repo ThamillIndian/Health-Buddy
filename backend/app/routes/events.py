@@ -39,8 +39,8 @@ async def log_event(user_id: str, event_data: EventCreate, db: Session = Depends
     db.commit()
     db.refresh(event)
     
-    # Run triage after event logged
-    score, level, reasons = triage_engine.calculate_risk_score(user_id, db)
+    # Run triage after event logged (now returns score, level, reasons, sources)
+    score, level, reasons, sources = triage_engine.calculate_risk_score(user_id, db)
     triage_engine.generate_alert(user_id, score, level, reasons, event.id, db)
     
     return event
@@ -69,8 +69,8 @@ async def get_dashboard(user_id: str, days: int = 7, db: Session = Depends(get_d
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Get current risk level
-    score, level, reasons = triage_engine.calculate_risk_score(user_id, db)
+    # Get current risk level (now returns score, level, reasons, sources)
+    score, level, reasons, sources = triage_engine.calculate_risk_score(user_id, db)
     
     # Get events from last N days
     since = datetime.utcnow() - timedelta(days=days)
@@ -89,10 +89,20 @@ async def get_dashboard(user_id: str, days: int = 7, db: Session = Depends(get_d
     glucose_readings = []
     
     for event in vitals:
-        if event.payload.get("vital_type") == "bp":
-            bp_readings.append(event.payload.get("bp", ""))
-        elif event.payload.get("vital_type") == "glucose":
-            glucose_readings.append(event.payload.get("glucose", 0))
+        payload = event.payload
+        
+        # Check for BP (either via vital_type or direct bp field)
+        if payload.get("bp"):
+            bp_readings.append(payload.get("bp", ""))
+        elif payload.get("vital_type") == "bp":
+            bp_readings.append(payload.get("bp", ""))
+        
+        # Check for glucose (directly in payload, no vital_type needed)
+        if payload.get("glucose") is not None:
+            glucose_value = payload.get("glucose")
+            # Handle both int and float, and ensure it's a valid number
+            if isinstance(glucose_value, (int, float)) and glucose_value > 0:
+                glucose_readings.append(float(glucose_value))
     
     if bp_readings:
         avg_bp = bp_readings[-1]  # Latest reading

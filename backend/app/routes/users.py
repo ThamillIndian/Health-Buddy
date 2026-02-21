@@ -12,13 +12,16 @@ router = APIRouter()
 
 @router.post("/users", response_model=UserResponse)
 async def create_user(user_data: UserCreate, db: Session = Depends(get_db)):
-    """Create a new user with condition profile"""
+    """Create a new user OR return existing user if email exists (auto-login)"""
     
     # Check if email already exists
     existing = db.query(User).filter(User.email == user_data.email).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        # User exists - return existing user (auto-login)
+        # Note: We don't update their name/condition if they already exist
+        return existing
     
+    # Email doesn't exist - create new user
     user_id = str(uuid.uuid4())
     user = User(
         id=user_id,

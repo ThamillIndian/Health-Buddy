@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from app.database import init_db
-from app.routes import users, events, triage, reports
+from app.routes import users, events, triage, reports, voice, insights, clinical, medications
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -53,6 +53,10 @@ app.include_router(users.router, prefix="/api", tags=["users"])
 app.include_router(events.router, prefix="/api", tags=["events"])
 app.include_router(triage.router, prefix="/api", tags=["triage"])
 app.include_router(reports.router, prefix="/api", tags=["reports"])
+app.include_router(voice.router, prefix="/api", tags=["voice"])
+app.include_router(insights.router, prefix="/api", tags=["insights"])
+app.include_router(clinical.router, prefix="/api", tags=["clinical"])
+app.include_router(medications.router, prefix="/api", tags=["medications"])
 
 # Health check endpoint
 @app.get("/health")

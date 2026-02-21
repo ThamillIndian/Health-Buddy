@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { apiClient } from '@/app/utils/api';
 import { MEDICATIONS, SYMPTOMS } from '@/app/utils/constants';
 
@@ -9,13 +9,21 @@ interface QuickLogProps {
   onEventLogged?: () => void;
 }
 
+interface SavedMedication {
+  id: string;
+  name: string;
+  strength: string;
+}
+
 export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Med taken form
-  const [selectedMed, setSelectedMed] = useState('');
+  // Med taken form - UPDATED: Now supports multiple medications
+  const [selectedMeds, setSelectedMeds] = useState<string[]>([]);
+  const [savedMedications, setSavedMedications] = useState<SavedMedication[]>([]);
+  const [showSavedMeds, setShowSavedMeds] = useState(false);
 
   // Vitals form
   const [systolic, setSystolic] = useState('');
@@ -27,23 +35,50 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
   const [selectedSymptom, setSelectedSymptom] = useState('');
   const [symptomSeverity, setSymptomSeverity] = useState(2);
 
+  // Load saved medications on mount
+  useEffect(() => {
+    loadSavedMedications();
+  }, [userId]);
+
+  const loadSavedMedications = async () => {
+    try {
+      const response = await apiClient.getMedications(userId);
+      setSavedMedications(response.data);
+    } catch (error) {
+      console.log('Could not load saved medications');
+    }
+  };
+
+  // Handle multiple medications
+  const toggleMedication = (medId: string) => {
+    setSelectedMeds(prev =>
+      prev.includes(medId)
+        ? prev.filter(id => id !== medId)
+        : [...prev, medId]
+    );
+  };
+
   const handleMedTaken = async () => {
-    if (!selectedMed) {
-      setMessage('Please select a medication');
+    if (selectedMeds.length === 0) {
+      setMessage('Please select at least one medication');
       return;
     }
 
     try {
       setLoading(true);
-      await apiClient.logEvent(userId, {
-        type: 'medication',
-        payload: { action: 'taken', medication_id: selectedMed },
-        source: 'web',
-        language: 'en',
-      });
+      
+      // Log each selected medication
+      for (const medId of selectedMeds) {
+        await apiClient.logEvent(userId, {
+          type: 'medication',
+          payload: { action: 'taken', medication_id: medId },
+          source: 'web',
+          language: 'en',
+        });
+      }
 
-      setMessage('✅ Medication logged!');
-      setSelectedMed('');
+      setMessage(`✅ ${selectedMeds.length} medication(s) logged!`);
+      setSelectedMeds([]);
       setActiveTab(null);
       onEventLogged?.();
 
@@ -189,28 +224,60 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
         </button>
       </div>
 
-      {/* Med form */}
+      {/* Med form - Multi-select with checkboxes */}
       {activeTab === 'med' && (
         <div className="bg-white p-4 rounded-lg border border-blue-200 mb-4">
-          <h3 className="font-semibold mb-3">Select Medication</h3>
-          <select
-            value={selectedMed}
-            onChange={(e) => setSelectedMed(e.target.value)}
-            className="w-full p-2 border rounded mb-3"
-          >
-            <option value="">Choose medication...</option>
+          <h3 className="font-semibold mb-3">💊 Select Medications (Multiple OK)</h3>
+          
+          {/* Show saved medications first */}
+          {savedMedications.length > 0 && (
+            <div className="mb-4 pb-4 border-b border-gray-200">
+              <p className="text-sm font-medium text-gray-700 mb-2">📌 Your Medications:</p>
+              <div className="space-y-1 mb-3">
+                {savedMedications.map((med) => (
+                  <label key={med.id} className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedMeds.includes(med.id)}
+                      onChange={() => toggleMedication(med.id)}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                    <span className="flex-1 text-green-700 font-medium">{med.name} {med.strength}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Library medications */}
+          <div className="max-h-64 overflow-y-auto mb-4 border rounded p-3 bg-gray-50">
+            <p className="text-xs text-gray-600 mb-2 font-medium">Available from Library:</p>
             {MEDICATIONS.map((med) => (
-              <option key={med.id} value={med.id}>
-                {med.icon} {med.name}
-              </option>
+              <label key={med.id} className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded cursor-pointer mb-1">
+                <input
+                  type="checkbox"
+                  checked={selectedMeds.includes(med.id)}
+                  onChange={() => toggleMedication(med.id)}
+                  className="w-4 h-4 cursor-pointer"
+                />
+                <span className="text-lg">{med.icon}</span>
+                <span className="flex-1 text-sm">{med.name}</span>
+              </label>
             ))}
-          </select>
+          </div>
+          
+          {selectedMeds.length > 0 && (
+            <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200 text-sm">
+              ✅ {selectedMeds.length} medication(s) selected
+            </div>
+          )}
+          
           <button
             onClick={handleMedTaken}
-            disabled={loading}
-            className="w-full bg-blue-600 text-white p-2 rounded font-semibold hover:bg-blue-700 disabled:bg-gray-400"
+            disabled={loading || selectedMeds.length === 0}
+            className="w-full bg-blue-600 text-white p-2 rounded font-semibold hover:bg-blue-700 disabled:bg-gray-400 transition"
           >
-            {loading ? 'Logging...' : 'Confirm Taken'}
+            {loading ? 'Logging...' : `Confirm Taken (${selectedMeds.length})`}
           </button>
         </div>
       )}

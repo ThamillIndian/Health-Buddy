@@ -78,6 +78,7 @@ class TriageResult(BaseModel):
     score: float = Field(0.0, ge=0, le=100)
     level: str  # green, amber, red
     reasons: List[str]
+    sources: Dict[str, Any] = {}  # Clinical data sources (WHO, IDA, ESC/ESH)
     timestamp: datetime
 
 class AlertResponse(BaseModel):
