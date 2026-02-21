@@ -446,6 +446,86 @@ def _generate_enhanced_pdf(user, events, alerts, medications, adherence_logs,
         story.append(timeline_table)
     
     story.append(Spacer(1, 0.3*inch))
+    
+    # ========== UN-TAKEN / MISSED MEDICATIONS ==========
+    story.append(Paragraph("Un-taken & Missed Medications", styles['Heading2']))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Get missed/pending medications from adherence logs
+    missed_logs = [log for log in adherence_logs 
+                   if log.status in ["missed", "pending"] 
+                   and log.scheduled_time <= period_end]
+    
+    # Also check medications that haven't been taken today
+    today = datetime.utcnow().date()
+    today_start = datetime.combine(today, datetime.min.time())
+    today_med_events = [e for e in med_events 
+                        if e.timestamp >= today_start 
+                        and e.payload.get("action") == "taken"]
+    taken_med_ids = set([e.payload.get("medication_id") for e in today_med_events if e.payload.get("medication_id")])
+    
+    # Find medications not taken today (but only if they're active and should be taken)
+    untaken_meds = []
+    for med in medications:
+        if med.id not in taken_med_ids:
+            # Check if this medication should have been taken today based on schedule
+            med_logs_today = [log for log in adherence_logs 
+                             if log.med_id == med.id 
+                             and log.scheduled_time.date() == today
+                             and log.status in ["pending", "missed"]]
+            if med_logs_today:
+                untaken_meds.append(med)
+    
+    if missed_logs or untaken_meds:
+        missed_data = [["Medication", "Strength", "Scheduled Time", "Status", "Days Overdue"]]
+        
+        # Add missed logs
+        for log in missed_logs[:30]:  # Last 30 missed
+            med = next((m for m in medications if m.id == log.med_id), None)
+            if med:
+                scheduled = log.scheduled_time.strftime('%Y-%m-%d %H:%M')
+                days_overdue = (datetime.utcnow() - log.scheduled_time).days if log.scheduled_time < datetime.utcnow() else 0
+                status = "🔴 Missed" if log.status == "missed" else "🟡 Pending"
+                
+                missed_data.append([
+                    med.name,
+                    med.strength or "N/A",
+                    scheduled,
+                    status,
+                    f"{days_overdue} days" if days_overdue > 0 else "Today"
+                ])
+        
+        # Add un-taken medications (not taken today)
+        for med in untaken_meds:
+            if med.id not in [log.med_id for log in missed_logs]:  # Avoid duplicates
+                missed_data.append([
+                    med.name,
+                    med.strength or "N/A",
+                    "Today",
+                    "🟡 Not Taken",
+                    "0 days"
+                ])
+        
+        if len(missed_data) > 1:  # More than just header
+            missed_table = Table(missed_data, colWidths=[2*inch, 1*inch, 1.5*inch, 1*inch, 1*inch])
+            missed_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ef4444')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#fef2f2')])
+            ]))
+            
+            story.append(missed_table)
+        else:
+            story.append(Paragraph("✅ All medications have been taken on schedule.", styles['Normal']))
+    else:
+        story.append(Paragraph("✅ All medications have been taken on schedule.", styles['Normal']))
+    
+    story.append(Spacer(1, 0.3*inch))
     story.append(PageBreak())
     
     # ========== SYMPTOMS ANALYSIS ==========
@@ -588,35 +668,123 @@ def _generate_enhanced_pdf(user, events, alerts, medications, adherence_logs,
         story.append(alert_table)
         story.append(Spacer(1, 0.3*inch))
     
-    # ========== RECOMMENDATIONS ==========
-    story.append(Paragraph("Recommendations", styles['Heading2']))
+    # ========== ENHANCED RECOMMENDATIONS ==========
+    story.append(Paragraph("Personalized Recommendations & Insights", styles['Heading2']))
     story.append(Spacer(1, 0.2*inch))
     
     recommendations = []
     
-    if adherence_pct < 80:
-        recommendations.append("⚠️ Medication adherence is below optimal. Consider setting reminders or discussing with your doctor.")
+    # Medication-specific recommendations
+    if missed_logs:
+        missed_count = len(missed_logs)
+        recommendations.append(f"⚠️ {missed_count} medication dose(s) were missed or pending. Consider setting up reminders or using a pill organizer to improve adherence.")
     
+    if adherence_pct < 80:
+        recommendations.append("⚠️ Medication adherence is below optimal (WHO recommends >80%). Consider discussing with your doctor about simplifying your medication schedule or using reminder tools.")
+    elif adherence_pct < 95:
+        recommendations.append("✅ Good medication adherence. Aim for >95% for optimal health outcomes (WHO standard). Small improvements can significantly impact your health.")
+    else:
+        recommendations.append("✅ Excellent medication adherence! You're meeting WHO's optimal standard of >95%. Keep up the great work!")
+    
+    # Vitals-specific recommendations
     if glucose_readings:
-        high_glucose = [g for g in glucose_readings if g["value"] > 180]
-        if high_glucose:
-            recommendations.append("🔴 Some glucose readings are elevated. Monitor closely and consult your doctor.")
+        avg_glucose = sum([g["value"] for g in glucose_readings]) / len(glucose_readings)
+        if avg_glucose > 180:
+            recommendations.append("🔴 Average glucose is elevated (>180 mg/dL per IDA guidelines). This may indicate poor diabetes control. Consult your doctor immediately and review your diet and medication.")
+        elif avg_glucose > 140:
+            recommendations.append("🟡 Average glucose is slightly elevated (140-180 mg/dL per IDA guidelines). Monitor closely, maintain regular meal times, and consider dietary adjustments. Discuss with your doctor.")
+        elif avg_glucose < 70:
+            recommendations.append("⚠️ Average glucose is low (<70 mg/dL). Watch for hypoglycemia symptoms (dizziness, sweating, confusion) and discuss with your doctor about adjusting medication timing or dosage.")
+        else:
+            recommendations.append("✅ Glucose levels are within normal range (70-140 mg/dL per IDA guidelines). Continue monitoring and maintaining your current routine.")
     
     if bp_readings:
-        high_bp = [b for b in bp_readings if b["systolic"] > 140 or b["diastolic"] > 90]
-        if high_bp:
-            recommendations.append("⚠️ Some blood pressure readings are elevated. Continue monitoring.")
+        avg_systolic = sum([b["systolic"] for b in bp_readings]) / len(bp_readings)
+        avg_diastolic = sum([b["diastolic"] for b in bp_readings]) / len(bp_readings)
+        
+        if avg_systolic > 160 or avg_diastolic > 100:
+            recommendations.append("🔴 Blood pressure is critically high (Stage 2 Hypertension per ESC/ESH guidelines). Seek immediate medical attention and avoid delaying treatment.")
+        elif avg_systolic > 140 or avg_diastolic > 90:
+            recommendations.append("⚠️ Blood pressure is elevated (Stage 1 Hypertension: 140-159/90-99 mmHg per ESC/ESH guidelines). Monitor regularly, reduce sodium intake, increase physical activity, and discuss with your doctor.")
+        else:
+            recommendations.append("✅ Blood pressure is within normal range (<140/90 mmHg per ESC/ESH guidelines). Continue maintaining a healthy lifestyle with regular exercise and balanced diet.")
     
-    if len(symptoms) > 10:
-        recommendations.append("📊 Multiple symptoms reported. Consider discussing patterns with your healthcare provider.")
+    # Peak Flow recommendations
+    if peak_flow_readings:
+        avg_peak_flow = sum([p["value"] for p in peak_flow_readings]) / len(peak_flow_readings)
+        if avg_peak_flow < 150:
+            recommendations.append("🔴 Peak flow is low (<150 L/min). This may indicate asthma exacerbation or respiratory issues. Consult your doctor immediately and ensure you're using your inhaler correctly.")
+        elif avg_peak_flow < 200:
+            recommendations.append("🟡 Peak flow is below normal (150-200 L/min). Monitor closely, ensure proper inhaler technique, and discuss with your doctor if this persists.")
+        else:
+            recommendations.append("✅ Peak flow is within normal range (≥200 L/min). Continue your current asthma management plan.")
     
+    # Symptom-specific recommendations
+    if symptoms:
+        critical_symptoms = [s for s in symptoms if s.payload.get("severity", 0) >= 3]
+        if critical_symptoms:
+            recommendations.append("🚨 Critical symptoms (severity ≥3) were reported during this period. Please seek immediate medical attention if symptoms persist or worsen.")
+        
+        # Calculate symptom frequency for recommendations
+        symptom_freq_rec = defaultdict(int)
+        for event in symptoms:
+            symptom_name = event.payload.get("name", "Unknown")
+            symptom_freq_rec[symptom_name] += 1
+        
+        frequent_symptoms = [name for name, count in symptom_freq_rec.items() if count >= 3]
+        if frequent_symptoms:
+            recommendations.append(f"📊 Frequent symptoms detected: {', '.join(frequent_symptoms)}. Consider discussing symptom patterns and triggers with your healthcare provider.")
+    
+    # Trend-based recommendations
+    if bp_readings and len(bp_readings) >= 3:
+        recent_bp = bp_readings[-3:]
+        older_bp = bp_readings[:-3] if len(bp_readings) > 3 else []
+        if older_bp:
+            recent_avg = sum([b["systolic"] for b in recent_bp]) / len(recent_bp)
+            older_avg = sum([b["systolic"] for b in older_bp]) / len(older_bp)
+            if recent_avg > older_avg + 10:
+                recommendations.append("📈 Blood pressure shows an increasing trend over time. Monitor closely, review lifestyle factors (stress, diet, exercise), and discuss with your doctor.")
+            elif recent_avg < older_avg - 10:
+                recommendations.append("📉 Blood pressure shows a decreasing trend. This is positive! Continue your current management plan.")
+    
+    if glucose_readings and len(glucose_readings) >= 3:
+        recent_glucose = glucose_readings[-3:]
+        older_glucose = glucose_readings[:-3] if len(glucose_readings) > 3 else []
+        if older_glucose:
+            recent_avg = sum([g["value"] for g in recent_glucose]) / len(recent_glucose)
+            older_avg = sum([g["value"] for g in older_glucose]) / len(older_glucose)
+            if recent_avg > older_avg + 20:
+                recommendations.append("📈 Glucose levels show an increasing trend. Review your diet, medication timing, and discuss with your doctor.")
+            elif recent_avg < older_avg - 20:
+                recommendations.append("📉 Glucose levels show a decreasing trend. Great progress! Continue monitoring and maintain your current routine.")
+    
+    # Activity-based recommendations
+    total_events = len(events)
+    if total_events < 5:
+        recommendations.append("📝 Low activity logging detected. Regular tracking helps identify patterns and improves health outcomes. Try logging at least one vital or symptom daily.")
+    elif total_events > 50:
+        recommendations.append("✅ Excellent health tracking! Your consistent logging provides valuable insights for your healthcare team. Keep up the great work!")
+    
+    # General health recommendations
     if not recommendations:
-        recommendations.append("✅ Your health metrics are within normal ranges. Continue maintaining your current routine.")
+        recommendations.append("✅ Your health metrics are within normal ranges. Continue maintaining your current routine with regular exercise, balanced diet, and medication adherence.")
+    else:
+        recommendations.append("💡 Remember: This report is for informational purposes only. Always consult your healthcare provider for medical decisions and treatment adjustments.")
     
-    recommendations.append("📋 Please consult your doctor with this report for professional medical advice.")
+    recommendations.append("📋 Please share this report with your doctor during your next visit for comprehensive review and personalized medical guidance.")
+    
+    # Format recommendations with better styling
+    rec_style = ParagraphStyle(
+        'RecommendationStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        leftIndent=15,
+        spaceAfter=8,
+        bulletIndent=10
+    )
     
     for rec in recommendations:
-        story.append(Paragraph(f"• {rec}", styles['Normal']))
+        story.append(Paragraph(f"• {rec}", rec_style))
         story.append(Spacer(1, 0.1*inch))
     
     story.append(Spacer(1, 0.3*inch))
