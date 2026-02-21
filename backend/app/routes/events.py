@@ -4,9 +4,9 @@ Event logging routes
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Optional
 from app.database import get_db
-from app.models import Event, User
+from app.models import Event, User, AdherenceLog, Medication
 from app.schemas import EventCreate, EventResponse, DashboardResponse, DashboardMetric
 from app.services.triage_engine import TriageEngine
 import uuid
@@ -39,11 +39,101 @@ async def log_event(user_id: str, event_data: EventCreate, db: Session = Depends
     db.commit()
     db.refresh(event)
     
+    # Check for critical symptoms BEFORE running triage
+    critical_symptom = False
+    action_required = None
+    critical_symptom_name = None
+    symptom_severity = 1
+    
+    if event_data.type == "symptom":
+        symptom_name = event_data.payload.get("name", "")
+        symptom_severity = event_data.payload.get("severity", 1)
+        
+        CRITICAL_SYMPTOMS = [
+            "Chest Pain",
+            "Shortness of Breath",
+            "Severe Headache",
+            "Severe Dizziness",
+            "Loss of Consciousness",
+            "Severe Abdominal Pain"
+        ]
+        
+        if symptom_name in CRITICAL_SYMPTOMS and symptom_severity >= 3:
+            critical_symptom = True
+            critical_symptom_name = symptom_name
+            action_required = "emergency"
+    
     # Run triage after event logged (now returns score, level, reasons, sources)
     score, level, reasons, sources = triage_engine.calculate_risk_score(user_id, db)
+    
+    # Force RED alert if critical symptom detected
+    if critical_symptom:
+        level = "red"
+        score = 100
+        reasons.insert(0, f"CRITICAL: {critical_symptom_name} (Severity {symptom_severity}/3) - Immediate medical attention required")
+    
     triage_engine.generate_alert(user_id, score, level, reasons, event.id, db)
     
-    return event
+    # Return event with critical symptom flags
+    from app.schemas import EventResponse
+    return EventResponse(
+        id=event.id,
+        user_id=event.user_id,
+        timestamp=event.timestamp,
+        type=event.type,
+        payload=event.payload,
+        source=event.source,
+        language=event.language,
+        critical_symptom=critical_symptom,
+        action_required=action_required
+    )
+
+@router.get("/users/{user_id}/adherence-logs")
+async def get_adherence_logs(
+    user_id: str, 
+    days: int = 30,
+    status: Optional[str] = None,  # "taken", "missed", "pending", or None for all
+    db: Session = Depends(get_db)
+):
+    """Get adherence logs (taken/missed/pending medications)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    since = datetime.utcnow() - timedelta(days=days)
+    
+    query = db.query(AdherenceLog).filter(
+        AdherenceLog.user_id == user_id,
+        AdherenceLog.scheduled_time >= since
+    )
+    
+    # Handle status filtering - support "pending", "missed", "taken", or multiple via comma-separated
+    if status:
+        if status == 'pending':
+            # "pending" includes both "pending" and "missed" (un-taken medications)
+            query = query.filter(AdherenceLog.status.in_(["pending", "missed"]))
+        else:
+            query = query.filter(AdherenceLog.status == status)
+    
+    logs = query.order_by(AdherenceLog.scheduled_time.desc()).all()
+    
+    # Format response with medication details
+    result = []
+    for log in logs:
+        medication = db.query(Medication).filter(Medication.id == log.med_id).first()
+        result.append({
+            "id": log.id,
+            "medication_id": log.med_id,
+            "medication_name": medication.name if medication else "Unknown",
+            "medication_strength": medication.strength if medication else "",
+            "scheduled_time": log.scheduled_time.isoformat(),
+            "taken_time": log.taken_time.isoformat() if log.taken_time else None,
+            "status": log.status,
+            "notes": log.notes,
+            "created_at": log.created_at.isoformat()
+        })
+    
+    return result
 
 @router.get("/users/{user_id}/events", response_model=List[EventResponse])
 async def get_events(user_id: str, days: int = 7, db: Session = Depends(get_db)):
@@ -87,6 +177,8 @@ async def get_dashboard(user_id: str, days: int = 7, db: Session = Depends(get_d
     bp_readings = []
     avg_glucose = None
     glucose_readings = []
+    avg_peak_flow = None
+    peak_flow_readings = []
     
     for event in vitals:
         payload = event.payload
@@ -103,6 +195,12 @@ async def get_dashboard(user_id: str, days: int = 7, db: Session = Depends(get_d
             # Handle both int and float, and ensure it's a valid number
             if isinstance(glucose_value, (int, float)) and glucose_value > 0:
                 glucose_readings.append(float(glucose_value))
+        
+        # Check for peak flow (breathing/respiratory)
+        if payload.get("peak_flow") is not None:
+            peak_flow_value = payload.get("peak_flow")
+            if isinstance(peak_flow_value, (int, float)) and peak_flow_value > 0:
+                peak_flow_readings.append(float(peak_flow_value))
     
     if bp_readings:
         avg_bp = bp_readings[-1]  # Latest reading
@@ -110,13 +208,18 @@ async def get_dashboard(user_id: str, days: int = 7, db: Session = Depends(get_d
     if glucose_readings:
         avg_glucose = sum(glucose_readings) / len(glucose_readings)
     
+    if peak_flow_readings:
+        avg_peak_flow = sum(peak_flow_readings) / len(peak_flow_readings)
+    
     # Calculate trends by comparing recent vs older readings
     bp_trend = "stable"
     glucose_trend = "stable"
+    peak_flow_trend = "stable"
     
     # Get readings with timestamps for trend calculation
     bp_readings_with_dates = []
     glucose_readings_with_dates = []
+    peak_flow_readings_with_dates = []
     
     for event in vitals:
         payload = event.payload
@@ -142,6 +245,15 @@ async def get_dashboard(user_id: str, days: int = 7, db: Session = Depends(get_d
             if isinstance(glucose_value, (int, float)) and glucose_value > 0:
                 glucose_readings_with_dates.append({
                     "value": float(glucose_value),
+                    "date": event_date
+                })
+        
+        # Extract peak flow with date
+        if payload.get("peak_flow") is not None:
+            peak_flow_value = payload.get("peak_flow")
+            if isinstance(peak_flow_value, (int, float)) and peak_flow_value > 0:
+                peak_flow_readings_with_dates.append({
+                    "value": float(peak_flow_value),
                     "date": event_date
                 })
     
@@ -190,6 +302,29 @@ async def get_dashboard(user_id: str, days: int = 7, db: Session = Depends(get_d
                 glucose_trend = "decreasing"
             else:
                 glucose_trend = "stable"
+    
+    # Calculate peak flow trend
+    if len(peak_flow_readings_with_dates) >= 2:
+        today = datetime.utcnow().date()
+        recent_cutoff = today - timedelta(days=3)
+        older_cutoff = today - timedelta(days=6)
+        
+        recent_peak_flow = [r["value"] for r in peak_flow_readings_with_dates if r["date"] >= recent_cutoff]
+        older_peak_flow = [r["value"] for r in peak_flow_readings_with_dates if older_cutoff <= r["date"] < recent_cutoff]
+        
+        if recent_peak_flow and older_peak_flow:
+            recent_avg = sum(recent_peak_flow) / len(recent_peak_flow)
+            older_avg = sum(older_peak_flow) / len(older_peak_flow)
+            
+            # Use 5% threshold to determine trend
+            change_pct = ((recent_avg - older_avg) / older_avg * 100) if older_avg > 0 else 0
+            
+            if change_pct > 5:
+                peak_flow_trend = "increasing"
+            elif change_pct < -5:
+                peak_flow_trend = "decreasing"
+            else:
+                peak_flow_trend = "stable"
     
     # Get alerts
     from app.models import Alert
@@ -272,6 +407,8 @@ async def get_dashboard(user_id: str, days: int = 7, db: Session = Depends(get_d
         bp_trend=bp_trend,
         avg_glucose=avg_glucose,
         glucose_trend=glucose_trend,
+        avg_peak_flow=avg_peak_flow,
+        peak_flow_trend=peak_flow_trend,
         recent_symptoms=recent_symptoms,
         alerts_count=len([a for a in alerts if a.level in ["amber", "red"]]),
         days_logged=days_logged,

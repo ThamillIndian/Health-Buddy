@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/app/utils/api';
-import { MEDICATIONS, SYMPTOMS } from '@/app/utils/constants';
+import { MEDICATIONS, SYMPTOMS, CRITICAL_SYMPTOMS } from '@/app/utils/constants';
+import CriticalSymptomAlert from './CriticalSymptomAlert';
 
 interface QuickLogProps {
   userId: string;
@@ -30,10 +31,15 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
   const [diastolic, setDiastolic] = useState('');
   const [glucose, setGlucose] = useState('');
   const [weight, setWeight] = useState('');
+  const [peakFlow, setPeakFlow] = useState('');
 
   // Symptoms form
   const [selectedSymptom, setSelectedSymptom] = useState('');
   const [symptomSeverity, setSymptomSeverity] = useState(2);
+  
+  // Critical symptom alert
+  const [showCriticalAlert, setShowCriticalAlert] = useState(false);
+  const [criticalSymptomData, setCriticalSymptomData] = useState<{ name: string; severity: number } | null>(null);
 
   // Load saved medications on mount
   useEffect(() => {
@@ -158,6 +164,11 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
       payload.weight = parseFloat(weight);
     }
 
+    if (peakFlow) {
+      payload.peak_flow = parseInt(peakFlow);
+      payload.vital_type = payload.vital_type || 'peak_flow';
+    }
+
     if (Object.keys(payload).length === 0) {
       setMessage('Please enter at least one vital');
       return;
@@ -177,6 +188,7 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
       setDiastolic('');
       setGlucose('');
       setWeight('');
+      setPeakFlow('');
       setActiveTab(null);
       onEventLogged?.();
 
@@ -196,12 +208,24 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
 
     try {
       setLoading(true);
-      await apiClient.logEvent(userId, {
+      const response = await apiClient.logEvent(userId, {
         type: 'symptom',
         payload: { name: selectedSymptom, severity: symptomSeverity },
         source: 'web',
         language: 'en',
       });
+
+      // Check if this is a critical symptom
+      if (response.data.critical_symptom || 
+          (CRITICAL_SYMPTOMS.includes(selectedSymptom) && symptomSeverity >= 3)) {
+        setCriticalSymptomData({ name: selectedSymptom, severity: symptomSeverity });
+        setShowCriticalAlert(true);
+        
+        // Request notification permission if not already granted
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+      }
 
       setMessage('✅ Symptom logged!');
       setSelectedSymptom('');
@@ -382,6 +406,18 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
             />
           </div>
 
+          <div className="mb-3">
+            <label className="text-sm font-medium">Peak Flow (L/min)</label>
+            <input
+              type="number"
+              placeholder="Enter peak flow"
+              value={peakFlow}
+              onChange={(e) => setPeakFlow(e.target.value)}
+              className="w-full p-2 border rounded"
+            />
+            <p className="text-xs text-gray-500 mt-1">🫁 For asthma/respiratory tracking</p>
+          </div>
+
           <button
             onClick={handleVitalsSubmit}
             disabled={loading}
@@ -437,6 +473,18 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
             {loading ? 'Logging...' : 'Log Symptom'}
           </button>
         </div>
+      )}
+
+      {/* Critical Symptom Alert Modal */}
+      {showCriticalAlert && criticalSymptomData && (
+        <CriticalSymptomAlert
+          symptomName={criticalSymptomData.name}
+          severity={criticalSymptomData.severity}
+          onDismiss={() => {
+            setShowCriticalAlert(false);
+            setCriticalSymptomData(null);
+          }}
+        />
       )}
     </div>
   );

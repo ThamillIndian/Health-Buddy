@@ -11,6 +11,7 @@ interface TrendsChartProps {
 export default function TrendsChart({ userId, days = 7 }: TrendsChartProps) {
   const [glucoseData, setGlucoseData] = useState<(number | null)[]>([]);
   const [bpData, setBpData] = useState<(number | null)[]>([]);
+  const [peakFlowData, setPeakFlowData] = useState<(number | null)[]>([]);
   const [labels, setLabels] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,6 +27,7 @@ export default function TrendsChart({ userId, days = 7 }: TrendsChartProps) {
         // Group vitals by date (YYYY-MM-DD)
         const dailyGlucose: { [key: string]: number } = {};
         const dailyBP: { [key: string]: number } = {};
+        const dailyPeakFlow: { [key: string]: number } = {};
 
         events.forEach((event: any) => {
           if (event.type === 'vital') {
@@ -55,12 +57,24 @@ export default function TrendsChart({ userId, days = 7 }: TrendsChartProps) {
                 }
               }
             }
+            
+            // Extract peak flow value
+            if (event.payload.peak_flow !== undefined && event.payload.peak_flow !== null) {
+              const peakFlowValue = typeof event.payload.peak_flow === 'number' 
+                ? event.payload.peak_flow 
+                : parseFloat(event.payload.peak_flow);
+              if (!isNaN(peakFlowValue) && peakFlowValue > 0) {
+                // Use the latest value for each day
+                dailyPeakFlow[dateKey] = peakFlowValue;
+              }
+            }
           }
         });
 
         // Create arrays for the last N days, filling with null for missing days
         const glucoseDataArray: (number | null)[] = [];
         const bpDataArray: (number | null)[] = [];
+        const peakFlowDataArray: (number | null)[] = [];
         const dayLabelsArray: string[] = [];
 
         for (let i = days - 1; i >= 0; i--) {
@@ -73,10 +87,12 @@ export default function TrendsChart({ userId, days = 7 }: TrendsChartProps) {
           dayLabelsArray.push(dayLabel);
           glucoseDataArray.push(dailyGlucose[dateKey] || null);
           bpDataArray.push(dailyBP[dateKey] || null);
+          peakFlowDataArray.push(dailyPeakFlow[dateKey] || null);
         }
 
         setGlucoseData(glucoseDataArray);
         setBpData(bpDataArray);
+        setPeakFlowData(peakFlowDataArray);
         setLabels(dayLabelsArray);
       } catch (error) {
         console.error('Failed to fetch trends:', error);
@@ -109,6 +125,7 @@ export default function TrendsChart({ userId, days = 7 }: TrendsChartProps) {
   // Calculate stats only from actual data (filter out null values)
   const validGlucoseData = glucoseData.filter((v): v is number => v !== null);
   const validBPData = bpData.filter((v): v is number => v !== null);
+  const validPeakFlowData = peakFlowData.filter((v): v is number => v !== null);
 
   const maxGlucose = validGlucoseData.length > 0 ? Math.max(...validGlucoseData) : 0;
   const minGlucose = validGlucoseData.length > 0 ? Math.min(...validGlucoseData) : 0;
@@ -137,6 +154,21 @@ export default function TrendsChart({ userId, days = 7 }: TrendsChartProps) {
       break;
     }
   }
+  
+  let latestPeakFlow: number | null = null;
+  for (let i = peakFlowData.length - 1; i >= 0; i--) {
+    if (peakFlowData[i] !== null) {
+      latestPeakFlow = peakFlowData[i];
+      break;
+    }
+  }
+
+  const maxPeakFlow = validPeakFlowData.length > 0 ? Math.max(...validPeakFlowData) : 0;
+  const minPeakFlow = validPeakFlowData.length > 0 ? Math.min(...validPeakFlowData) : 0;
+  const rangePeakFlow = maxPeakFlow - minPeakFlow || 1;
+  const avgPeakFlow = validPeakFlowData.length > 0 
+    ? (validPeakFlowData.reduce((a, b) => a + b, 0) / validPeakFlowData.length).toFixed(0)
+    : 'N/A';
 
   // Get day numbers for labels
   const getDayNumber = (label: string) => {
@@ -292,11 +324,90 @@ export default function TrendsChart({ userId, days = 7 }: TrendsChartProps) {
         </div>
       </div>
 
+      {/* Peak Flow Trend */}
+      {validPeakFlowData.length > 0 && (
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-2">
+            <h4 className="font-semibold text-blue-700">🫁 Peak Flow</h4>
+            {validPeakFlowData.length > 0 ? (
+              <span className="text-sm text-gray-600">
+                Min: {minPeakFlow.toFixed(0)} | Max: {maxPeakFlow.toFixed(0)} | Avg: {avgPeakFlow}
+              </span>
+            ) : (
+              <span className="text-sm text-gray-400">No data available</span>
+            )}
+          </div>
+
+          {/* Box-style visualization */}
+          <div className="flex items-center justify-around gap-2 mb-3">
+            {peakFlowData.map((val, idx) => {
+              const dayNum = getDayNumber(labels[idx] || '');
+              const hasData = val !== null;
+              
+              // Calculate color intensity based on value (0-100%)
+              let intensity = 0;
+              if (hasData && rangePeakFlow > 0) {
+                intensity = ((val - minPeakFlow) / rangePeakFlow) * 100;
+                intensity = Math.max(20, Math.min(100, intensity)); // Clamp between 20-100%
+              }
+              
+              return (
+                <div
+                  key={idx}
+                  className="flex flex-col items-center"
+                  title={hasData ? `${labels[idx]}: ${val} L/min` : `${labels[idx]}: No data`}
+                >
+                  <div
+                    className={`w-12 h-12 rounded transition-all ${
+                      hasData
+                        ? 'border-2 border-blue-400 hover:shadow-lg cursor-pointer'
+                        : 'bg-gray-100 border-2 border-gray-300 border-dashed opacity-50'
+                    }`}
+                    style={hasData ? {
+                      background: `linear-gradient(135deg, 
+                        rgba(59, 130, 246, ${0.3 + intensity / 200}), 
+                        rgba(37, 99, 235, ${0.5 + intensity / 200}))`
+                    } : {}}
+                  />
+                  <span className="text-xs text-gray-600 mt-2 font-medium">{dayNum}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Peak Flow Status */}
+          <div className="mt-3 p-3 bg-blue-50 rounded border-l-4 border-green-500">
+            <div className="flex items-center gap-2">
+              {latestPeakFlow !== null ? (
+                latestPeakFlow >= 200 ? (
+                  <>
+                    <span className="text-green-600 font-semibold">✅ Normal Range</span>
+                    <span className="text-sm text-gray-600">Latest: {latestPeakFlow} L/min</span>
+                  </>
+                ) : latestPeakFlow >= 150 ? (
+                  <>
+                    <span className="text-orange-600 font-semibold">⚠️ Below Normal</span>
+                    <span className="text-sm text-gray-600">Latest: {latestPeakFlow} L/min</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-red-600 font-semibold">🔴 Low</span>
+                    <span className="text-sm text-gray-600">Latest: {latestPeakFlow} L/min</span>
+                  </>
+                )
+              ) : (
+                <span className="text-gray-500 text-sm">No peak flow readings available</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Trend Analysis */}
-      {validGlucoseData.length > 1 || validBPData.length > 1 ? (
+      {validGlucoseData.length > 1 || validBPData.length > 1 || validPeakFlowData.length > 1 ? (
         <div className="mt-6 pt-4 border-t border-gray-200">
           <h4 className="font-semibold text-gray-800 mb-2">📊 Trend Analysis</h4>
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid gap-3 ${validPeakFlowData.length > 1 ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <div className="p-3 bg-blue-50 rounded border border-blue-200">
               <div className="text-sm text-gray-600">Glucose Trend</div>
               <div className="font-semibold text-blue-700">
@@ -313,6 +424,16 @@ export default function TrendsChart({ userId, days = 7 }: TrendsChartProps) {
                   : '📊 Stable'}
               </div>
             </div>
+            {validPeakFlowData.length > 1 && (
+              <div className="p-3 bg-cyan-50 rounded border border-cyan-200">
+                <div className="text-sm text-gray-600">Peak Flow Trend</div>
+                <div className="font-semibold text-cyan-700">
+                  {latestPeakFlow !== null && peakFlowData[0] !== null
+                    ? (latestPeakFlow > peakFlowData[0]! ? '📈 Increasing' : '📉 Decreasing')
+                    : '📊 Stable'}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : null}

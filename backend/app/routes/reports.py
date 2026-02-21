@@ -230,7 +230,20 @@ def _generate_enhanced_pdf(user, events, alerts, medications, adherence_logs,
                     "date": event.timestamp
                 })
     
+    # Peak Flow Analysis
+    peak_flow_readings = []
+    for event in vitals:
+        payload = event.payload
+        if payload.get("peak_flow") is not None:
+            peak_flow_value = payload.get("peak_flow")
+            if isinstance(peak_flow_value, (int, float)) and peak_flow_value > 0:
+                peak_flow_readings.append({
+                    "value": float(peak_flow_value),
+                    "date": event.timestamp
+                })
+    
     avg_glucose = sum([g["value"] for g in glucose_readings]) / len(glucose_readings) if glucose_readings else None
+    avg_peak_flow = sum([p["value"] for p in peak_flow_readings]) / len(peak_flow_readings) if peak_flow_readings else None
     latest_bp = bp_readings[-1]["bp"] if bp_readings else "N/A"
     
     # Risk Level from alerts
@@ -249,6 +262,7 @@ def _generate_enhanced_pdf(user, events, alerts, medications, adherence_logs,
         ["Total Vitals Logged", str(len(vitals)), "📊"],
         ["Blood Pressure (Latest)", latest_bp, "🩺"],
         ["Glucose (Average)", f"{avg_glucose:.1f} mg/dL" if avg_glucose else "N/A", "📈"],
+        ["Peak Flow (Average)", f"{avg_peak_flow:.1f} L/min" if avg_peak_flow else "N/A", "🫁"],
         ["Symptoms Reported", str(len(symptoms)), "🤒"],
         ["Active Medications", str(len(medications)), "💊"],
         ["Alerts Generated", str(len(alerts)), risk_status]
@@ -306,6 +320,19 @@ def _generate_enhanced_pdf(user, events, alerts, medications, adherence_logs,
                         status = "🔴"
                     elif glucose_val > 140:
                         status = "🟡"
+                    else:
+                        status = "✅"
+            elif payload.get("peak_flow") is not None:
+                vital_type = "Peak Flow"
+                value = f"{payload.get('peak_flow')} L/min"
+                peak_flow_val = payload.get("peak_flow")
+                if isinstance(peak_flow_val, (int, float)):
+                    # Normal peak flow varies by age/height, but generally:
+                    # < 80% of personal best or < 200 L/min for adults is concerning
+                    if peak_flow_val < 200:
+                        status = "🟡"
+                    elif peak_flow_val < 150:
+                        status = "🔴"
                     else:
                         status = "✅"
             elif payload.get("weight"):

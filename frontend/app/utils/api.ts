@@ -20,6 +20,8 @@ export const apiClient = {
     api.get(`/users/${userId}/events`, { params: { days } }),
   getDashboard: (userId: string, days?: number) => 
     api.get(`/users/${userId}/dashboard`, { params: { days } }),
+  getAdherenceLogs: (userId: string, days?: number, status?: string) => 
+    api.get(`/users/${userId}/adherence-logs`, { params: { days, status } }),
 
   // Triage
   runTriage: (userId: string) => api.post(`/users/${userId}/triage/run`),
@@ -41,6 +43,10 @@ export const apiClient = {
     api.delete(`/users/${userId}/medications/${medId}`),
   activateMedication: (userId: string, medId: string) => 
     api.post(`/users/${userId}/medications/${medId}/activate`),
+  markMedicationTaken: (userId: string, medId: string, scheduledTime?: string) => 
+    api.post(`/users/${userId}/medications/${medId}/mark-taken`, scheduledTime ? { scheduled_time: scheduledTime } : {}),
+  checkMissedMedications: (userId: string) => 
+    api.post(`/users/${userId}/medications/check-missed`),
 };
 
 export default api;

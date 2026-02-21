@@ -1,14 +1,14 @@
 'use client';
 
 import { useHealthData } from '@/app/hooks/useHealthData';
-import { STATUS_COLORS, STATUS_MESSAGES } from '@/app/utils/constants';
-import { apiClient } from '@/app/utils/api';
+import { STATUS_COLORS, STATUS_MESSAGES, CRITICAL_SYMPTOMS, CRITICAL_SYMPTOM_RECOMMENDATIONS } from '@/app/utils/constants';
 import { useState, useEffect } from 'react';
 import TriageComponent from './TriageComponent';
 import AIInsights from './AIInsights';
 import TrendsChart from './TrendsChart';
 import AchievementBadges from './AchievementBadges';
 import QuickActionFAB from './QuickActionFAB';
+import { apiClient } from '@/app/utils/api';
 
 interface DashboardProps {
   userId: string;
@@ -17,9 +17,9 @@ interface DashboardProps {
 
 export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
   const { dashboard, loading, error } = useHealthData(userId);
-  const [reportLoading, setReportLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [criticalAlerts, setCriticalAlerts] = useState<any[]>([]);
 
   useEffect(() => {
     // Check for saved dark mode preference
@@ -34,25 +34,55 @@ export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
     setRefreshKey(k => k + 1);
   }, [refreshTrigger]);
 
-  const handleDownloadPDF = async () => {
-    try {
-      setReportLoading(true);
-      const response = await apiClient.generateReport(userId, 7);
+  // Check for critical symptoms in recent alerts
+  useEffect(() => {
+    const checkCriticalSymptoms = async () => {
+      if (!dashboard) return;
       
-      // Trigger download
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `health_report_${new Date().toISOString().split('T')[0]}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-    } catch (error) {
-      console.error('Failed to download report:', error);
-    } finally {
-      setReportLoading(false);
-    }
-  };
+      // Request notification permission if not already set
+      if ('Notification' in window && Notification.permission === 'default') {
+        await Notification.requestPermission();
+      }
+      
+      // Get recent events to check for critical symptoms
+      try {
+        const eventsResponse = await apiClient.getEvents(userId, 1); // Last 24 hours
+        const events = eventsResponse.data;
+        
+        const critical = events.filter((event: any) => {
+          if (event.type === 'symptom') {
+            const symptomName = event.payload?.name || '';
+            const severity = event.payload?.severity || 0;
+            return CRITICAL_SYMPTOMS.includes(symptomName) && severity >= 3;
+          }
+          return false;
+        });
+        
+        setCriticalAlerts(critical);
+        
+        // Show browser notification for critical symptoms
+        if (critical.length > 0 && 'Notification' in window && Notification.permission === 'granted') {
+          critical.forEach((event: any) => {
+            // Show notification (browser handles duplicates via tag)
+            const notificationTag = `critical-${event.id}`;
+            
+            new Notification(`🚨 Critical: ${event.payload.name}`, {
+              body: 'Immediate medical attention required',
+              icon: '/favicon.ico',
+              badge: '/favicon.ico',
+              tag: notificationTag,
+              requireInteraction: true,
+              vibrate: [200, 100, 200], // Vibrate pattern for mobile
+            });
+          });
+        }
+      } catch (error) {
+        console.error('Failed to check critical symptoms:', error);
+      }
+    };
+    
+    checkCriticalSymptoms();
+  }, [dashboard, userId]);
 
   const toggleDarkMode = () => {
     const newDarkMode = !darkMode;
@@ -124,6 +154,41 @@ export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
             {darkMode ? '☀️ Light' : '🌙 Dark'}
           </button>
         </div>
+
+        {/* Critical Symptom Banner */}
+        {criticalAlerts.length > 0 && (
+          <div className="bg-red-600 text-white p-4 rounded-lg mb-4 shadow-xl border-l-4 border-red-800 animate-pulse">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-3xl">🚨</span>
+              <div className="flex-1">
+                <h3 className="font-bold text-lg">Critical Symptom Detected</h3>
+                <p className="text-sm text-red-100">
+                  {criticalAlerts.map((alert: any) => alert.payload.name).join(', ')} - Immediate medical attention required
+                </p>
+              </div>
+              <button
+                onClick={() => window.location.href = 'tel:108'}
+                className="bg-white text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-50 transition"
+              >
+                📞 Call 108
+              </button>
+            </div>
+            
+            {/* Recommendations Section */}
+            {criticalAlerts.map((alert: any, index: number) => {
+              const recommendation = CRITICAL_SYMPTOM_RECOMMENDATIONS[alert.payload.name] || 
+                "This symptom requires immediate medical attention. Please seek help from a healthcare professional or emergency services.";
+              return (
+                <div key={index} className="bg-red-700 bg-opacity-50 border-l-4 border-red-300 p-3 rounded mt-2">
+                  <p className="text-white text-sm leading-relaxed">
+                    <span className="font-semibold">{alert.payload.name}:</span> {recommendation}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* Status Banner - Enhanced */}
         <div className={`${statusBg} text-white p-6 rounded-lg mb-6 shadow-xl border-l-4`}>
           <div className="flex justify-between items-start">
@@ -203,6 +268,21 @@ export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
             </p>
           </div>
 
+          {/* Peak Flow */}
+          {dashboard.metrics.avg_peak_flow && (
+            <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-6 rounded-lg border shadow-md hover:shadow-lg transition-all`}>
+              <h3 className={`font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                🫁 Peak Flow
+              </h3>
+              <div className="text-3xl font-bold text-blue-600 mb-2">
+                {dashboard.metrics.avg_peak_flow?.toFixed(0) || 'N/A'} L/min
+              </div>
+              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                Trend: {dashboard.metrics.peak_flow_trend} {dashboard.metrics.peak_flow_trend === 'stable' ? '→' : dashboard.metrics.peak_flow_trend === 'increasing' ? '↑' : '↓'}
+              </p>
+            </div>
+          )}
+
           {/* Alerts */}
           <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-6 rounded-lg border shadow-md hover:shadow-lg transition-all`}>
             <h3 className={`font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
@@ -263,17 +343,6 @@ export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
           </div>
         </div>
       )}
-
-      {/* Action Buttons */}
-      <div className="flex gap-3 mb-20">
-        <button
-          onClick={handleDownloadPDF}
-          disabled={reportLoading}
-          className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 transition-all shadow-md hover:shadow-lg"
-        >
-          {reportLoading ? '⏳ Generating...' : '📥 Download PDF Report'}
-        </button>
-      </div>
 
       {/* Quick Action FAB */}
       <QuickActionFAB userId={userId} onDataLogged={() => setRefreshKey(k => k + 1)} />

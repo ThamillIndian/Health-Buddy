@@ -48,6 +48,8 @@ class MedicationResponse(BaseModel):
     frequency: str
     times: List[str]
     active: bool
+    created_at: Optional[datetime] = None
+    notes: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -69,6 +71,8 @@ class EventResponse(BaseModel):
     payload: Dict[str, Any]
     source: str
     language: str
+    critical_symptom: Optional[bool] = False  # Flag for critical symptoms requiring immediate action
+    action_required: Optional[str] = None  # Action recommendation
     
     class Config:
         from_attributes = True
@@ -99,6 +103,8 @@ class DashboardMetric(BaseModel):
     bp_trend: str = "stable"
     avg_glucose: Optional[float]
     glucose_trend: str = "stable"
+    avg_peak_flow: Optional[float]
+    peak_flow_trend: str = "stable"
     recent_symptoms: List[str] = []
     alerts_count: int = 0
     days_logged: int = 0  # Number of unique days with logged events

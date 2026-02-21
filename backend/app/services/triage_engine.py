@@ -31,6 +31,15 @@ class TriageEngine:
         reasons = []
         sources = {}
         
+        # 0. Check for critical symptoms FIRST (overrides normal scoring)
+        critical_symptom, critical_reason = self._check_critical_symptoms(user_id, db)
+        if critical_symptom:
+            # Force RED alert for critical symptoms
+            score = 100
+            level = "red"
+            reasons.append(critical_reason)
+            return score, level, reasons, sources
+        
         # 1. Check threshold breaches (based on clinical standards)
         threshold_score, threshold_reasons, threshold_sources = self._check_threshold_breach(user_id, db)
         score += threshold_score
@@ -158,6 +167,35 @@ class TriageEngine:
                     reasons.append("BP rising trend over 7 days")
         
         return score, reasons
+    
+    def _check_critical_symptoms(self, user_id: str, db: Session) -> Tuple[bool, str]:
+        """Check for critical symptoms requiring immediate action"""
+        CRITICAL_SYMPTOMS = [
+            "Chest Pain",
+            "Shortness of Breath",
+            "Severe Headache",
+            "Severe Dizziness",
+            "Loss of Consciousness",
+            "Severe Abdominal Pain"
+        ]
+        
+        # Get symptoms from last 24 hours
+        last_24h = datetime.utcnow() - timedelta(hours=24)
+        recent_symptoms = db.query(Event).filter(
+            Event.user_id == user_id,
+            Event.type == "symptom",
+            Event.timestamp >= last_24h
+        ).order_by(Event.timestamp.desc()).all()
+        
+        for symptom_event in recent_symptoms:
+            symptom_name = symptom_event.payload.get("name", "")
+            severity = symptom_event.payload.get("severity", 1)
+            
+            # Check if it's a critical symptom with severity 3
+            if symptom_name in CRITICAL_SYMPTOMS and severity >= 3:
+                return True, f"CRITICAL: {symptom_name} (Severity {severity}/3) - Immediate medical attention required"
+        
+        return False, ""
     
     def _check_symptoms(self, user_id: str, db: Session) -> Tuple[float, List[str]]:
         """Check recent symptom severity"""

@@ -52,4 +52,24 @@ export const STATUS_MESSAGES = {
   red: "🚨 Please consult your doctor",
 };
 
+// Critical symptoms that require immediate attention (severity 3)
+export const CRITICAL_SYMPTOMS = [
+  "Chest Pain",
+  "Shortness of Breath",
+  "Severe Headache",
+  "Severe Dizziness",
+  "Loss of Consciousness",
+  "Severe Abdominal Pain",
+];
+
+// Action recommendations for critical symptoms
+export const CRITICAL_SYMPTOM_RECOMMENDATIONS: { [key: string]: string } = {
+  "Chest Pain": "Chest pain can be a sign of a serious condition. Seek immediate medical attention. If severe or accompanied by shortness of breath, call emergency services immediately.",
+  "Shortness of Breath": "Difficulty breathing requires immediate medical attention. If severe, call emergency services. Sit upright and try to remain calm while seeking help.",
+  "Severe Headache": "Severe headaches, especially sudden onset, may require immediate medical evaluation. If accompanied by vision changes, confusion, or neck stiffness, seek emergency care.",
+  "Severe Dizziness": "Severe dizziness with loss of balance or fainting requires immediate medical attention. Sit or lie down to prevent falls and seek help.",
+  "Loss of Consciousness": "Loss of consciousness is a medical emergency. Call emergency services immediately and ensure the person is in a safe position.",
+  "Severe Abdominal Pain": "Severe abdominal pain may indicate a serious condition. Seek immediate medical attention, especially if accompanied by fever, vomiting, or inability to move.",
+};
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
