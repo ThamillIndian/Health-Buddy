@@ -53,6 +53,16 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
   const [pendingNormalizedEvent, setPendingNormalizedEvent] = useState<any>(null);
   const [showManualLogButton, setShowManualLogButton] = useState(false);
 
+  // Separate pending events for each tab
+  const [pendingMedEvent, setPendingMedEvent] = useState<any>(null);
+  const [showMedLogButton, setShowMedLogButton] = useState(false);
+  
+  const [pendingVitalsEvent, setPendingVitalsEvent] = useState<any>(null);
+  const [showVitalsLogButton, setShowVitalsLogButton] = useState(false);
+  
+  const [pendingSymptomEvent, setPendingSymptomEvent] = useState<any>(null);
+  const [showSymptomLogButton, setShowSymptomLogButton] = useState(false);
+
   // Load saved medications on mount
   useEffect(() => {
     loadSavedMedications();
@@ -214,99 +224,114 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
 
   // Handle voice transcription for vitals
   const handleVitalsVoiceTranscribe = (text: string) => {
-    setMessage(`🎤 Transcribed: "${text}"`);
-    setTimeout(() => setMessage(''), 3000);
+    console.log('Vitals transcript received:', text);
+    // Clear pending event when new transcription starts
+    if (text && text.trim()) {
+      setPendingVitalsEvent(null);
+      setShowVitalsLogButton(false);
+    }
   };
 
-  const handleVitalsVoiceNormalize = (event: any) => {
-    if (event && event.type === 'vital') {
-      const payload = event.payload;
-      
-      // Auto-fill BP
-      if (payload.bp) {
-        const [sys, dia] = payload.bp.split('/');
-        setSystolic(sys);
-        setDiastolic(dia);
-      }
-      
-      // Auto-fill glucose
-      if (payload.glucose) {
-        setGlucose(payload.glucose.toString());
-      }
-      
-      // Auto-fill weight
-      if (payload.weight) {
-        setWeight(payload.weight.toString());
-      }
-      
-      // Auto-fill peak flow
-      if (payload.peak_flow) {
-        setPeakFlow(payload.peak_flow.toString());
-      }
-      
-      setMessage('✅ Form auto-filled from voice! Review and submit.');
+  const handleVitalsVoiceNormalize = async (event: any) => {
+    if (!event || !event.type) {
+      setMessage('⚠️ Could not understand the voice input. Please try again.');
       setTimeout(() => setMessage(''), 3000);
+      return;
     }
+
+    // Only accept vital events for vitals tab
+    if (event.type !== 'vital') {
+      setMessage(`⚠️ Expected vitals data, but detected: ${event.type}. Please try again with vitals information.`);
+      setTimeout(() => setMessage(''), 5000);
+      return;
+    }
+
+    console.log('📋 Vitals normalized event received:', event);
+    
+    // Store the event for manual review
+    setPendingVitalsEvent(event);
+    setShowVitalsLogButton(true);
+    
+    // Show formatted message
+    const vitals = [];
+    if (event.payload.bp) vitals.push(`BP: ${event.payload.bp}`);
+    if (event.payload.glucose) vitals.push(`Glucose: ${event.payload.glucose} mg/dL`);
+    if (event.payload.weight) vitals.push(`Weight: ${event.payload.weight} kg`);
+    if (event.payload.peak_flow) vitals.push(`Peak Flow: ${event.payload.peak_flow} L/min`);
+    
+    setMessage(`✅ Detected vitals: ${vitals.join(', ')}. Click "Log Event" to save.`);
+    setTimeout(() => setMessage(''), 8000);
   };
 
   // Handle voice transcription for symptoms
   const handleSymptomVoiceTranscribe = (text: string) => {
-    setMessage(`🎤 Transcribed: "${text}"`);
-    setTimeout(() => setMessage(''), 3000);
+    console.log('Symptom transcript received:', text);
+    // Clear pending event when new transcription starts
+    if (text && text.trim()) {
+      setPendingSymptomEvent(null);
+      setShowSymptomLogButton(false);
+    }
   };
 
-  const handleSymptomVoiceNormalize = (event: any) => {
-    if (event && event.type === 'symptom') {
-      const payload = event.payload;
-      
-      // Auto-fill symptom name
-      if (payload.name) {
-        // Try to find matching symptom from SYMPTOMS list
-        const foundSymptom = SYMPTOMS.find(s => 
-          s.name.toLowerCase() === payload.name.toLowerCase()
-        );
-        if (foundSymptom) {
-          setSelectedSymptom(foundSymptom.name);
-        } else {
-          setSelectedSymptom(payload.name);
-        }
-      }
-      
-      // Auto-fill severity
-      if (payload.severity) {
-        setSymptomSeverity(payload.severity);
-      }
-      
-      setMessage('✅ Symptom auto-filled from voice! Review and submit.');
+  const handleSymptomVoiceNormalize = async (event: any) => {
+    if (!event || !event.type) {
+      setMessage('⚠️ Could not understand the voice input. Please try again.');
       setTimeout(() => setMessage(''), 3000);
+      return;
     }
+
+    // Only accept symptom events for symptom tab
+    if (event.type !== 'symptom') {
+      setMessage(`⚠️ Expected symptom data, but detected: ${event.type}. Please try again with symptom information.`);
+      setTimeout(() => setMessage(''), 5000);
+      return;
+    }
+
+    console.log('📋 Symptom normalized event received:', event);
+    
+    // Store the event for manual review
+    setPendingSymptomEvent(event);
+    setShowSymptomLogButton(true);
+    
+    // Show formatted message
+    const severityText = event.payload.severity === 1 ? 'Mild' : event.payload.severity === 2 ? 'Moderate' : 'Severe';
+    setMessage(`✅ Detected symptom: ${event.payload.name || 'Unknown'} (${severityText}). Click "Log Event" to save.`);
+    setTimeout(() => setMessage(''), 8000);
   };
 
   // Handle voice transcription for medications
   const handleMedVoiceTranscribe = (text: string) => {
-    setMessage(`🎤 Transcribed: "${text}"`);
-    setTimeout(() => setMessage(''), 3000);
+    console.log('Medication transcript received:', text);
+    // Clear pending event when new transcription starts
+    if (text && text.trim()) {
+      setPendingMedEvent(null);
+      setShowMedLogButton(false);
+    }
   };
 
-  const handleMedVoiceNormalize = (event: any) => {
-    if (event && event.type === 'medication') {
-      const payload = event.payload;
-      
-      // Try to find medication by name
-      if (payload.medication_name) {
-        const foundMed = savedMedications.find(m => 
-          m.name.toLowerCase().includes(payload.medication_name.toLowerCase())
-        ) || MEDICATIONS.find(m => 
-          m.name.toLowerCase().includes(payload.medication_name.toLowerCase())
-        );
-        
-        if (foundMed && !selectedMeds.includes(foundMed.id)) {
-          toggleMedication(foundMed.id);
-          setMessage(`✅ ${foundMed.name} added from voice!`);
-          setTimeout(() => setMessage(''), 3000);
-        }
-      }
+  const handleMedVoiceNormalize = async (event: any) => {
+    if (!event || !event.type) {
+      setMessage('⚠️ Could not understand the voice input. Please try again.');
+      setTimeout(() => setMessage(''), 3000);
+      return;
     }
+
+    // Only accept medication events for med tab
+    if (event.type !== 'medication') {
+      setMessage(`⚠️ Expected medication data, but detected: ${event.type}. Please try again with medication information.`);
+      setTimeout(() => setMessage(''), 5000);
+      return;
+    }
+
+    console.log('📋 Medication normalized event received:', event);
+    
+    // Store the event for manual review
+    setPendingMedEvent(event);
+    setShowMedLogButton(true);
+    
+    // Show formatted message
+    setMessage(`✅ Detected medication: ${event.payload.medication_name || 'Unknown'}. Click "Log Event" to save.`);
+    setTimeout(() => setMessage(''), 8000);
   };
 
   // Handle voice transcription for general note/voice input
@@ -356,7 +381,122 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
     setTimeout(() => setMessage(''), 8000);
   };
 
-  // Manual log function - logs the pending normalized event
+  // Manual log functions for each tab
+  const handleManualLogVitals = async () => {
+    if (!pendingVitalsEvent) return;
+    
+    try {
+      setLoading(true);
+      
+      const eventData = {
+        type: pendingVitalsEvent.type,
+        payload: pendingVitalsEvent.payload,
+        source: 'voice',
+        language: pendingVitalsEvent.language || 'en',
+        raw_text: pendingVitalsEvent.original_text || undefined,
+        confidence: pendingVitalsEvent.confidence || undefined,
+      };
+      
+      console.log('📤 Sending vitals event to backend:', eventData);
+      
+      await apiClient.logEvent(userId, eventData);
+      
+      setMessage('✅ Vitals logged successfully!');
+      setPendingVitalsEvent(null);
+      setShowVitalsLogButton(false);
+      setVoiceMode({ ...voiceMode, vitals: false }); // Switch back to form
+      onEventLogged?.();
+      
+      setTimeout(() => setMessage(''), 5000);
+    } catch (error: any) {
+      setMessage('❌ ' + (error.response?.data?.detail || 'Failed to log event'));
+      setTimeout(() => setMessage(''), 5000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualLogSymptom = async () => {
+    if (!pendingSymptomEvent) return;
+    
+    try {
+      setLoading(true);
+      
+      const eventData = {
+        type: pendingSymptomEvent.type,
+        payload: pendingSymptomEvent.payload,
+        source: 'voice',
+        language: pendingSymptomEvent.language || 'en',
+        raw_text: pendingSymptomEvent.original_text || undefined,
+        confidence: pendingSymptomEvent.confidence || undefined,
+      };
+      
+      console.log('📤 Sending symptom event to backend:', eventData);
+      
+      const response = await apiClient.logEvent(userId, eventData);
+      
+      // Handle critical symptoms
+      if (response.data.critical_symptom) {
+        const symptomName = pendingSymptomEvent.payload.name || 'Unknown';
+        const severity = pendingSymptomEvent.payload.severity || 2;
+        setCriticalSymptomData({ name: symptomName, severity });
+        setShowCriticalAlert(true);
+        
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+      }
+
+      setMessage('✅ Symptom logged successfully!');
+      setPendingSymptomEvent(null);
+      setShowSymptomLogButton(false);
+      setVoiceMode({ ...voiceMode, symptom: false }); // Switch back to form
+      onEventLogged?.();
+      
+      setTimeout(() => setMessage(''), 5000);
+    } catch (error: any) {
+      setMessage('❌ ' + (error.response?.data?.detail || 'Failed to log event'));
+      setTimeout(() => setMessage(''), 5000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualLogMed = async () => {
+    if (!pendingMedEvent) return;
+    
+    try {
+      setLoading(true);
+      
+      const eventData = {
+        type: pendingMedEvent.type,
+        payload: pendingMedEvent.payload,
+        source: 'voice',
+        language: pendingMedEvent.language || 'en',
+        raw_text: pendingMedEvent.original_text || undefined,
+        confidence: pendingMedEvent.confidence || undefined,
+      };
+      
+      console.log('📤 Sending medication event to backend:', eventData);
+      
+      await apiClient.logEvent(userId, eventData);
+      
+      setMessage('✅ Medication logged successfully!');
+      setPendingMedEvent(null);
+      setShowMedLogButton(false);
+      setVoiceMode({ ...voiceMode, med: false }); // Switch back to form
+      onEventLogged?.();
+      
+      setTimeout(() => setMessage(''), 5000);
+    } catch (error: any) {
+      setMessage('❌ ' + (error.response?.data?.detail || 'Failed to log event'));
+      setTimeout(() => setMessage(''), 5000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Manual log function - logs the pending normalized event (for Voice/Note tab)
   const handleManualLogEvent = async () => {
     if (!pendingNormalizedEvent) return;
     
@@ -471,7 +611,16 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
       {/* Quick Action Buttons - Enhanced */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         <button
-          onClick={() => setActiveTab(activeTab === 'med' ? null : 'med')}
+          onClick={() => {
+            const newTab = activeTab === 'med' ? null : 'med';
+            setActiveTab(newTab);
+            // Reset voice mode when switching tabs
+            if (newTab !== 'med') {
+              setVoiceMode(prev => ({ ...prev, med: false }));
+              setPendingMedEvent(null);
+              setShowMedLogButton(false);
+            }
+          }}
           className={`group relative p-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
             activeTab === 'med'
               ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/50'
@@ -486,7 +635,16 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
         </button>
 
         <button
-          onClick={() => setActiveTab(activeTab === 'vitals' ? null : 'vitals')}
+          onClick={() => {
+            const newTab = activeTab === 'vitals' ? null : 'vitals';
+            setActiveTab(newTab);
+            // Reset voice mode when switching tabs
+            if (newTab !== 'vitals') {
+              setVoiceMode(prev => ({ ...prev, vitals: false }));
+              setPendingVitalsEvent(null);
+              setShowVitalsLogButton(false);
+            }
+          }}
           className={`group relative p-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
             activeTab === 'vitals'
               ? 'bg-gradient-to-br from-green-600 to-green-700 text-white shadow-lg shadow-green-500/50'
@@ -501,7 +659,16 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
         </button>
 
         <button
-          onClick={() => setActiveTab(activeTab === 'symptom' ? null : 'symptom')}
+          onClick={() => {
+            const newTab = activeTab === 'symptom' ? null : 'symptom';
+            setActiveTab(newTab);
+            // Reset voice mode when switching tabs
+            if (newTab !== 'symptom') {
+              setVoiceMode(prev => ({ ...prev, symptom: false }));
+              setPendingSymptomEvent(null);
+              setShowSymptomLogButton(false);
+            }
+          }}
           className={`group relative p-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
             activeTab === 'symptom'
               ? 'bg-gradient-to-br from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-500/50'
@@ -555,12 +722,81 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
           {voiceMode.med ? (
             <div className="mb-4">
               <VoiceInput
+                key={`med-voice-${voiceMode.med}`}
                 userId={userId}
                 language="en-IN"
                 mode="transcribe"
                 onTranscribe={handleMedVoiceTranscribe}
                 onNormalize={handleMedVoiceNormalize}
               />
+              
+              {/* Manual Log Button for Medication */}
+              {showMedLogButton && pendingMedEvent && (
+                <div className="mt-6 p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-2xl shadow-xl">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-3xl">💊</span>
+                    <h4 className="font-bold text-xl text-gray-800">Ready to Log Medication</h4>
+                  </div>
+                  
+                  <div className="bg-white p-4 rounded-xl border-2 border-yellow-200 mb-4 shadow-inner">
+                    <div className="mb-3">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Medication Name</span>
+                      <p className="text-lg font-bold text-blue-700 capitalize mt-1">
+                        {pendingMedEvent.payload.medication_name || 'Unknown'}
+                      </p>
+                    </div>
+                    <div className="mb-3">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Action</span>
+                      <p className="text-sm text-gray-700 capitalize mt-1">
+                        {pendingMedEvent.payload.action || 'taken'}
+                      </p>
+                    </div>
+                    {pendingMedEvent.confidence && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-500">Confidence:</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all"
+                            style={{ width: `${(pendingMedEvent.confidence * 100)}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs font-bold text-gray-700">{(pendingMedEvent.confidence * 100).toFixed(0)}%</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleManualLogMed}
+                      disabled={loading}
+                      className="flex-1 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-bold hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-2"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          <span>Logging...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xl">✅</span>
+                          <span>Log Medication</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMedLogButton(false);
+                        setPendingMedEvent(null);
+                        setMessage('');
+                      }}
+                      disabled={loading}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 disabled:bg-gray-100 transition-all duration-200 transform hover:scale-105"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -665,12 +901,94 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
           {voiceMode.vitals ? (
             <div className="mb-4">
               <VoiceInput
+                key={`vitals-voice-${voiceMode.vitals}`}
                 userId={userId}
                 language="en-IN"
                 mode="transcribe"
                 onTranscribe={handleVitalsVoiceTranscribe}
                 onNormalize={handleVitalsVoiceNormalize}
               />
+              
+              {/* Manual Log Button for Vitals */}
+              {showVitalsLogButton && pendingVitalsEvent && (
+                <div className="mt-6 p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-2xl shadow-xl">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-3xl">📊</span>
+                    <h4 className="font-bold text-xl text-gray-800">Ready to Log Vitals</h4>
+                  </div>
+                  
+                  <div className="bg-white p-4 rounded-xl border-2 border-yellow-200 mb-4 shadow-inner">
+                    <div className="mb-3">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Vitals Detected</span>
+                      <div className="mt-2 space-y-2">
+                        {pendingVitalsEvent.payload.bp && (
+                          <p className="text-sm text-gray-700">
+                            <strong>Blood Pressure:</strong> <span className="font-bold text-green-700">{pendingVitalsEvent.payload.bp}</span>
+                          </p>
+                        )}
+                        {pendingVitalsEvent.payload.glucose && (
+                          <p className="text-sm text-gray-700">
+                            <strong>Glucose:</strong> <span className="font-bold text-green-700">{pendingVitalsEvent.payload.glucose} mg/dL</span>
+                          </p>
+                        )}
+                        {pendingVitalsEvent.payload.weight && (
+                          <p className="text-sm text-gray-700">
+                            <strong>Weight:</strong> <span className="font-bold text-green-700">{pendingVitalsEvent.payload.weight} kg</span>
+                          </p>
+                        )}
+                        {pendingVitalsEvent.payload.peak_flow && (
+                          <p className="text-sm text-gray-700">
+                            <strong>Peak Flow:</strong> <span className="font-bold text-green-700">{pendingVitalsEvent.payload.peak_flow} L/min</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {pendingVitalsEvent.confidence && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-500">Confidence:</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all"
+                            style={{ width: `${(pendingVitalsEvent.confidence * 100)}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs font-bold text-gray-700">{(pendingVitalsEvent.confidence * 100).toFixed(0)}%</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleManualLogVitals}
+                      disabled={loading}
+                      className="flex-1 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-bold hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-2"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          <span>Logging...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xl">✅</span>
+                          <span>Log Vitals</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowVitalsLogButton(false);
+                        setPendingVitalsEvent(null);
+                        setMessage('');
+                      }}
+                      disabled={loading}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 disabled:bg-gray-100 transition-all duration-200 transform hover:scale-105"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -779,12 +1097,89 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
           {voiceMode.symptom ? (
             <div className="mb-4">
               <VoiceInput
+                key={`symptom-voice-${voiceMode.symptom}`}
                 userId={userId}
                 language="en-IN"
                 mode="transcribe"
                 onTranscribe={handleSymptomVoiceTranscribe}
                 onNormalize={handleSymptomVoiceNormalize}
               />
+              
+              {/* Manual Log Button for Symptom */}
+              {showSymptomLogButton && pendingSymptomEvent && (
+                <div className="mt-6 p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-2xl shadow-xl">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-3xl">😷</span>
+                    <h4 className="font-bold text-xl text-gray-800">Ready to Log Symptom</h4>
+                  </div>
+                  
+                  <div className="bg-white p-4 rounded-xl border-2 border-yellow-200 mb-4 shadow-inner">
+                    <div className="mb-3">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Symptom Name</span>
+                      <p className="text-lg font-bold text-orange-700 capitalize mt-1">
+                        {pendingSymptomEvent.payload.name || 'Unknown'}
+                      </p>
+                    </div>
+                    <div className="mb-3">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Severity</span>
+                      <div className="mt-2">
+                        {pendingSymptomEvent.payload.severity === 1 && (
+                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg font-bold text-sm">😊 Mild</span>
+                        )}
+                        {pendingSymptomEvent.payload.severity === 2 && (
+                          <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg font-bold text-sm">😐 Moderate</span>
+                        )}
+                        {pendingSymptomEvent.payload.severity === 3 && (
+                          <span className="px-3 py-1 bg-red-100 text-red-700 rounded-lg font-bold text-sm">😰 Severe</span>
+                        )}
+                      </div>
+                    </div>
+                    {pendingSymptomEvent.confidence && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-500">Confidence:</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all"
+                            style={{ width: `${(pendingSymptomEvent.confidence * 100)}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs font-bold text-gray-700">{(pendingSymptomEvent.confidence * 100).toFixed(0)}%</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleManualLogSymptom}
+                      disabled={loading}
+                      className="flex-1 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-bold hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-2"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          <span>Logging...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xl">✅</span>
+                          <span>Log Symptom</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowSymptomLogButton(false);
+                        setPendingSymptomEvent(null);
+                        setMessage('');
+                      }}
+                      disabled={loading}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 disabled:bg-gray-100 transition-all duration-200 transform hover:scale-105"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <>

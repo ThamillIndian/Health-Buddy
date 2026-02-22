@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+from typing import List
 from app.database import get_db
 from app.models import User, Event, Alert, Report, Medication, AdherenceLog
 from app.schemas import ReportRequest, ReportResponse
@@ -87,6 +88,20 @@ async def generate_report(user_id: str, request: ReportRequest, db: Session = De
     db.commit()
     
     return report
+
+@router.get("/users/{user_id}/reports", response_model=List[ReportResponse])
+async def get_user_reports(user_id: str, db: Session = Depends(get_db)):
+    """Get all reports for a user, ordered by most recent first"""
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    reports = db.query(Report).filter(
+        Report.user_id == user_id
+    ).order_by(Report.generated_at.desc()).all()
+    
+    return reports
 
 @router.get("/reports/{report_id}/download")
 async def download_report(report_id: str, db: Session = Depends(get_db)):

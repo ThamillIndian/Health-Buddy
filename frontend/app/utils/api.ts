@@ -30,6 +30,8 @@ export const apiClient = {
   // Reports
   generateReport: (userId: string, periodDays: number = 7) => 
     api.post(`/users/${userId}/reports`, { period_days: periodDays }),
+  getReports: (userId: string) => 
+    api.get(`/users/${userId}/reports`),
   downloadReport: (reportId: string) => 
     api.get(`/reports/${reportId}/download`, { responseType: 'blob' }),
 
