@@ -241,38 +241,42 @@ export default function HealthRecordsPage() {
         subtitle="Your health history and timeline"
       />
 
-      <div className="p-6">
-        {/* Filters */}
-        <div className="mb-6 flex gap-2 flex-wrap">
+      <div className="p-6 bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 min-h-screen">
+        {/* Filters - Enhanced */}
+        <div className="mb-8 flex gap-3 flex-wrap">
           {([
-            { key: 'all', label: 'All' },
-            { key: 'vital', label: 'Vital' },
-            { key: 'taken_medicines', label: 'Taken Medicines' },
-            { key: 'un_taken_medicines', label: 'Un-taken Medicines' },
-            { key: 'symptom', label: 'Symptom' }
+            { key: 'all', label: 'All', icon: '📋' },
+            { key: 'vital', label: 'Vital', icon: '📊' },
+            { key: 'taken_medicines', label: 'Taken Medicines', icon: '✅' },
+            { key: 'un_taken_medicines', label: 'Un-taken Medicines', icon: '❌' },
+            { key: 'symptom', label: 'Symptom', icon: '😷' }
           ] as const).map((f) => (
             <button
               key={f.key}
               onClick={() => setFilter(f.key as any)}
-              className={`px-4 py-2 rounded-lg font-semibold transition ${
+              className={`px-5 py-3 rounded-xl font-bold transition-all duration-200 transform hover:scale-105 ${
                 filter === f.key
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border-2 border-gray-200 shadow-md hover:shadow-lg'
               }`}
             >
+              <span className="mr-2">{f.icon}</span>
               {f.label}
             </button>
           ))}
         </div>
 
-        {/* Message Display */}
+        {/* Message Display - Enhanced */}
         {message && (
-          <div className={`mb-4 p-4 rounded-lg border ${
+          <div className={`mb-6 p-4 rounded-xl border-2 shadow-lg ${
             message.type === 'success' 
-              ? 'bg-green-50 border-green-200 text-green-800' 
-              : 'bg-red-50 border-red-200 text-red-800'
+              ? 'bg-gradient-to-r from-green-50 to-green-100 border-green-300 text-green-800' 
+              : 'bg-gradient-to-r from-red-50 to-red-100 border-red-300 text-red-800'
           }`}>
-            <p className="font-semibold">{message.text}</p>
+            <p className="font-bold flex items-center gap-2">
+              {message.type === 'success' ? '✅' : '❌'}
+              {message.text}
+            </p>
           </div>
         )}
 
@@ -298,35 +302,62 @@ export default function HealthRecordsPage() {
                   return (
                     <div
                       key={event.id}
-                      className={isMissedMed 
-                        ? "bg-red-50 border-l-4 border-red-500 p-4 rounded-lg border border-gray-200 hover:shadow-md transition"
-                        : "bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition"
-                      }
+                      className={`${
+                        isMissedMed 
+                          ? "bg-gradient-to-r from-red-50 to-red-100/50 border-l-4 border-red-500" 
+                          : event.type === 'vital'
+                          ? "bg-gradient-to-r from-white to-blue-50/30 border-l-4 border-blue-500"
+                          : event.type === 'medication'
+                          ? "bg-gradient-to-r from-white to-green-50/30 border-l-4 border-green-500"
+                          : "bg-gradient-to-r from-white to-orange-50/30 border-l-4 border-orange-500"
+                      } p-5 rounded-xl border-2 border-gray-200 hover:shadow-xl transition-all duration-200 transform hover:scale-[1.01]`}
                     >
                       <div className="flex items-start gap-4">
-                        <span className="text-3xl">{isMissedMed ? '❌' : getEventIcon(event.type)}</span>
+                        <div className={`p-3 rounded-xl ${
+                          isMissedMed 
+                            ? 'bg-red-100' 
+                            : event.type === 'vital'
+                            ? 'bg-blue-100'
+                            : event.type === 'medication'
+                            ? 'bg-green-100'
+                            : 'bg-orange-100'
+                        }`}>
+                          <span className="text-3xl">{isMissedMed ? '❌' : getEventIcon(event.type)}</span>
+                        </div>
                         <div className="flex-1">
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className={`font-semibold text-lg capitalize ${
-                              isMissedMed ? 'text-red-700' : ''
+                          <div className="flex justify-between items-start mb-3">
+                            <h3 className={`font-bold text-lg capitalize ${
+                              isMissedMed ? 'text-red-700' : 
+                              event.type === 'vital' ? 'text-blue-700' :
+                              event.type === 'medication' ? 'text-green-700' :
+                              'text-orange-700'
                             }`}>
                               {isMissedMed ? 'Missed Medication' : (event.type === 'medication' ? 'Taken Medicine' : event.type)}
                             </h3>
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-lg">
                               {formatDate(event.timestamp)}
                             </span>
                           </div>
-                          <div className="text-gray-700">
+                          <div className="text-gray-700 space-y-2">
                           {event.type === 'vital' && (
-                            <div className="space-y-1">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               {event.payload.bp && (
-                                <p>BP: <span className="font-medium">{event.payload.bp} mmHg</span></p>
+                                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                                  <p className="text-xs font-bold text-red-600 uppercase tracking-wide mb-1">Blood Pressure</p>
+                                  <p className="text-lg font-bold text-red-700">{event.payload.bp} <span className="text-sm font-normal text-gray-600">mmHg</span></p>
+                                </div>
                               )}
                               {event.payload.glucose && (
-                                <p>Glucose: <span className="font-medium">{event.payload.glucose} mg/dL</span></p>
+                                <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                                  <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-1">Glucose</p>
+                                  <p className="text-lg font-bold text-amber-700">{event.payload.glucose} <span className="text-sm font-normal text-gray-600">mg/dL</span></p>
+                                </div>
                               )}
                               {event.payload.weight && (
-                                <p>Weight: <span className="font-medium">{event.payload.weight} kg</span></p>
+                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                  <p className="text-xs font-bold text-blue-600 uppercase tracking-wide mb-1">Weight</p>
+                                  <p className="text-lg font-bold text-blue-700">{event.payload.weight} <span className="text-sm font-normal text-gray-600">kg</span></p>
+                                </div>
                               )}
                             </div>
                           )}
@@ -347,16 +378,16 @@ export default function HealthRecordsPage() {
                                     <button
                                       onClick={() => handleMarkAsTakenFromRecords(originalMed)}
                                       disabled={markingTaken === originalMed.id || loading}
-                                      className="w-full bg-green-600 text-white px-4 py-2 rounded font-semibold hover:bg-green-700 disabled:bg-gray-400 transition flex items-center justify-center gap-2"
+                                      className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-5 py-3 rounded-xl font-bold hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-2"
                                     >
                                       {markingTaken === originalMed.id ? (
                                         <>
-                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                                           <span>Processing...</span>
                                         </>
                                       ) : (
                                         <>
-                                          <span>✅</span>
+                                          <span className="text-xl">✅</span>
                                           <span>Mark as Taken</span>
                                         </>
                                       )}

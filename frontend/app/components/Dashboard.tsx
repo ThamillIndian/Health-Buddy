@@ -219,23 +219,24 @@ export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
         />
 
         {/* Metrics Grid - Enhanced Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* Adherence */}
-          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-6 rounded-lg border shadow-md hover:shadow-lg transition-all`}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className={`font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                💊 Medication Adherence
+          <div className={`${darkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white to-blue-50/30 border-gray-200'} p-6 rounded-2xl border-2 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className={`text-lg font-bold ${darkMode ? 'text-gray-200' : 'text-gray-800'} flex items-center gap-2`}>
+                <span className="text-2xl">💊</span>
+                <span>Medication Adherence</span>
               </h3>
-              <span className={`text-2xl font-bold ${dashboard.metrics.adherence_pct! >= 90 ? 'text-green-600' : 'text-blue-600'}`}>
+              <span className={`text-3xl font-bold ${dashboard.metrics.adherence_pct! >= 90 ? 'text-green-600' : 'text-blue-600'}`}>
                 {dashboard.metrics.adherence_pct?.toFixed(0)}%
               </span>
             </div>
-            <div className="w-full bg-gray-300 rounded-full h-3 overflow-hidden">
+            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden shadow-inner">
               <div
-                className={`h-3 rounded-full transition-all ${
+                className={`h-4 rounded-full transition-all duration-500 ${
                   dashboard.metrics.adherence_pct! >= 90
-                    ? 'bg-gradient-to-r from-green-400 to-green-600'
-                    : 'bg-gradient-to-r from-blue-400 to-blue-600'
+                    ? 'bg-gradient-to-r from-green-400 via-green-500 to-green-600'
+                    : 'bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600'
                 }`}
                 style={{ width: `${dashboard.metrics.adherence_pct || 0}%` }}
               />
@@ -243,28 +244,48 @@ export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
           </div>
 
           {/* BP */}
-          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-6 rounded-lg border shadow-md hover:shadow-lg transition-all`}>
-            <h3 className={`font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-              ❤️ Blood Pressure
+          <div className={`${darkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white to-red-50/30 border-gray-200'} p-6 rounded-2xl border-2 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]`}>
+            <h3 className={`text-lg font-bold ${darkMode ? 'text-gray-200' : 'text-gray-800'} mb-3 flex items-center gap-2`}>
+              <span className="text-2xl">❤️</span>
+              <span>Blood Pressure</span>
             </h3>
-            <div className="text-3xl font-bold text-red-600 mb-2">
+            <div className="text-4xl font-bold text-red-600 mb-2">
               {dashboard.metrics.avg_bp || 'N/A'}
             </div>
-            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Trend: {dashboard.metrics.bp_trend} {dashboard.metrics.bp_trend === 'stable' ? '→' : dashboard.metrics.bp_trend === 'increasing' ? '↑' : '↓'}
+            <p className={`text-sm font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}>
+              <span>Trend:</span>
+              <span className={`px-2 py-1 rounded-lg ${
+                dashboard.metrics.bp_trend === 'stable' 
+                  ? 'bg-green-100 text-green-700' 
+                  : dashboard.metrics.bp_trend === 'increasing'
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-blue-100 text-blue-700'
+              }`}>
+                {dashboard.metrics.bp_trend === 'stable' ? '→ Stable' : dashboard.metrics.bp_trend === 'increasing' ? '↑ Increasing' : '↓ Decreasing'}
+              </span>
             </p>
           </div>
 
           {/* Glucose */}
-          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-6 rounded-lg border shadow-md hover:shadow-lg transition-all`}>
-            <h3 className={`font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-              🩸 Glucose Level
+          <div className={`${darkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white to-amber-50/30 border-gray-200'} p-6 rounded-2xl border-2 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]`}>
+            <h3 className={`text-lg font-bold ${darkMode ? 'text-gray-200' : 'text-gray-800'} mb-3 flex items-center gap-2`}>
+              <span className="text-2xl">🩸</span>
+              <span>Glucose Level</span>
             </h3>
-            <div className="text-3xl font-bold text-amber-600 mb-2">
-              {dashboard.metrics.avg_glucose?.toFixed(0) || 'N/A'} mg/dL
+            <div className="text-4xl font-bold text-amber-600 mb-2">
+              {dashboard.metrics.avg_glucose?.toFixed(0) || 'N/A'} <span className="text-lg text-gray-500">mg/dL</span>
             </div>
-            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Trend: {dashboard.metrics.glucose_trend} {dashboard.metrics.glucose_trend === 'stable' ? '→' : dashboard.metrics.glucose_trend === 'increasing' ? '↑' : '↓'}
+            <p className={`text-sm font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}>
+              <span>Trend:</span>
+              <span className={`px-2 py-1 rounded-lg ${
+                dashboard.metrics.glucose_trend === 'stable' 
+                  ? 'bg-green-100 text-green-700' 
+                  : dashboard.metrics.glucose_trend === 'increasing'
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-blue-100 text-blue-700'
+              }`}>
+                {dashboard.metrics.glucose_trend === 'stable' ? '→ Stable' : dashboard.metrics.glucose_trend === 'increasing' ? '↑ Increasing' : '↓ Decreasing'}
+              </span>
             </p>
           </div>
 

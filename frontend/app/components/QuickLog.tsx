@@ -446,75 +446,106 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
   };
 
   return (
-    <div className="max-w-md mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-6 text-center text-blue-700">
-        How are you feeling today?
-      </h2>
+    <div className="w-full">
+      {/* Header Section */}
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+          How are you feeling today?
+        </h2>
+        <p className="text-gray-600 text-sm">Quickly log your health data</p>
+      </div>
 
+      {/* Message Alert */}
       {message && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
+        <div className={`mb-6 p-4 rounded-xl text-center font-medium shadow-md transition-all ${
+          message.includes('✅') 
+            ? 'bg-green-50 border-2 border-green-200 text-green-800' 
+            : message.includes('⚠️')
+            ? 'bg-yellow-50 border-2 border-yellow-200 text-yellow-800'
+            : 'bg-red-50 border-2 border-red-200 text-red-800'
+        }`}>
           {message}
         </div>
       )}
 
-      {/* Quick buttons */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      {/* Quick Action Buttons - Enhanced */}
+      <div className="grid grid-cols-2 gap-4 mb-8">
         <button
           onClick={() => setActiveTab(activeTab === 'med' ? null : 'med')}
-          className={`p-4 rounded-lg font-semibold transition ${
+          className={`group relative p-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
             activeTab === 'med'
-              ? 'bg-blue-600 text-white'
-              : 'bg-blue-50 text-blue-700 border border-blue-200'
+              ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/50'
+              : 'bg-white text-blue-700 border-2 border-blue-200 hover:border-blue-400 hover:shadow-md'
           }`}
         >
-          💊 Med Taken?
+          <div className="text-3xl mb-2">💊</div>
+          <div className="text-sm">Med Taken?</div>
+          {activeTab === 'med' && (
+            <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full animate-pulse"></div>
+          )}
         </button>
 
         <button
           onClick={() => setActiveTab(activeTab === 'vitals' ? null : 'vitals')}
-          className={`p-4 rounded-lg font-semibold transition ${
+          className={`group relative p-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
             activeTab === 'vitals'
-              ? 'bg-blue-600 text-white'
-              : 'bg-blue-50 text-blue-700 border border-blue-200'
+              ? 'bg-gradient-to-br from-green-600 to-green-700 text-white shadow-lg shadow-green-500/50'
+              : 'bg-white text-green-700 border-2 border-green-200 hover:border-green-400 hover:shadow-md'
           }`}
         >
-          📊 Vitals?
+          <div className="text-3xl mb-2">📊</div>
+          <div className="text-sm">Vitals?</div>
+          {activeTab === 'vitals' && (
+            <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full animate-pulse"></div>
+          )}
         </button>
 
         <button
           onClick={() => setActiveTab(activeTab === 'symptom' ? null : 'symptom')}
-          className={`p-4 rounded-lg font-semibold transition ${
+          className={`group relative p-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
             activeTab === 'symptom'
-              ? 'bg-blue-600 text-white'
-              : 'bg-blue-50 text-blue-700 border border-blue-200'
+              ? 'bg-gradient-to-br from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-500/50'
+              : 'bg-white text-orange-700 border-2 border-orange-200 hover:border-orange-400 hover:shadow-md'
           }`}
         >
-          😷 Symptoms?
+          <div className="text-3xl mb-2">😷</div>
+          <div className="text-sm">Symptoms?</div>
+          {activeTab === 'symptom' && (
+            <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full animate-pulse"></div>
+          )}
         </button>
 
         <button
           onClick={() => setActiveTab(activeTab === 'note' ? null : 'note')}
-          className={`p-4 rounded-lg font-semibold transition ${
+          className={`group relative p-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
             activeTab === 'note'
-              ? 'bg-blue-600 text-white'
-              : 'bg-blue-50 text-blue-700 border border-blue-200'
+              ? 'bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/50'
+              : 'bg-white text-purple-700 border-2 border-purple-200 hover:border-purple-400 hover:shadow-md'
           }`}
         >
-          🎤 Voice/Note
+          <div className="text-3xl mb-2">🎤</div>
+          <div className="text-sm">Voice/Note</div>
+          {activeTab === 'note' && (
+            <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full animate-pulse"></div>
+          )}
         </button>
       </div>
 
       {/* Med form - Multi-select with checkboxes */}
       {activeTab === 'med' && (
-        <div className="bg-white p-4 rounded-lg border border-blue-200 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">💊 Select Medications (Multiple OK)</h3>
+        <div className="bg-white p-6 rounded-2xl border-2 border-blue-100 shadow-xl mb-6 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <span className="text-2xl">💊</span>
+              <span>Select Medications</span>
+              <span className="text-sm font-normal text-gray-500">(Multiple OK)</span>
+            </h3>
             <button
               onClick={() => setVoiceMode({ ...voiceMode, med: !voiceMode.med })}
-              className={`px-3 py-1 rounded text-sm font-medium transition ${
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105 ${
                 voiceMode.med
-                  ? 'bg-purple-100 text-purple-700 border border-purple-300'
-                  : 'bg-gray-100 text-gray-700 border border-gray-300'
+                  ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
               }`}
             >
               {voiceMode.med ? '✏️ Switch to Form' : '🎤 Use Voice'}
@@ -536,18 +567,24 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
           
           {/* Show saved medications first */}
           {savedMedications.length > 0 && (
-            <div className="mb-4 pb-4 border-b border-gray-200">
-              <p className="text-sm font-medium text-gray-700 mb-2">📌 Your Medications:</p>
-              <div className="space-y-1 mb-3">
+            <div className="mb-6 pb-4 border-b-2 border-gray-100">
+              <p className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                <span>📌</span>
+                <span>Your Medications:</span>
+              </p>
+              <div className="space-y-2">
                 {savedMedications.map((med) => (
-                  <label key={med.id} className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                  <label key={med.id} className="flex items-center gap-3 p-3 hover:bg-blue-50 rounded-xl cursor-pointer transition-all border-2 border-transparent hover:border-blue-200">
                     <input
                       type="checkbox"
                       checked={selectedMeds.includes(med.id)}
                       onChange={() => toggleMedication(med.id)}
-                      className="w-4 h-4 cursor-pointer"
+                      className="w-5 h-5 cursor-pointer text-blue-600 focus:ring-2 focus:ring-blue-500 rounded"
                     />
-                    <span className="flex-1 text-green-700 font-medium">{med.name} {med.strength}</span>
+                    <span className="flex-1 text-green-700 font-semibold">{med.name} {med.strength}</span>
+                    {selectedMeds.includes(med.id) && (
+                      <span className="text-green-500 text-xl">✓</span>
+                    )}
                   </label>
                 ))}
               </div>
@@ -555,34 +592,50 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
           )}
 
           {/* Library medications */}
-          <div className="max-h-64 overflow-y-auto mb-4 border rounded p-3 bg-gray-50">
-            <p className="text-xs text-gray-600 mb-2 font-medium">Available from Library:</p>
-            {MEDICATIONS.map((med) => (
-              <label key={med.id} className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded cursor-pointer mb-1">
-                <input
-                  type="checkbox"
-                  checked={selectedMeds.includes(med.id)}
-                  onChange={() => toggleMedication(med.id)}
-                  className="w-4 h-4 cursor-pointer"
-                />
-                <span className="text-lg">{med.icon}</span>
-                <span className="flex-1 text-sm">{med.name}</span>
-              </label>
-            ))}
+          <div className="max-h-64 overflow-y-auto mb-6 border-2 border-gray-200 rounded-xl p-4 bg-gradient-to-br from-gray-50 to-white">
+            <p className="text-xs font-bold text-gray-600 mb-3 uppercase tracking-wide">Available from Library:</p>
+            <div className="space-y-2">
+              {MEDICATIONS.map((med) => (
+                <label key={med.id} className="flex items-center gap-3 p-3 hover:bg-blue-50 rounded-lg cursor-pointer transition-all border-2 border-transparent hover:border-blue-200">
+                  <input
+                    type="checkbox"
+                    checked={selectedMeds.includes(med.id)}
+                    onChange={() => toggleMedication(med.id)}
+                    className="w-5 h-5 cursor-pointer text-blue-600 focus:ring-2 focus:ring-blue-500 rounded"
+                  />
+                  <span className="text-xl">{med.icon}</span>
+                  <span className="flex-1 text-sm font-medium text-gray-700">{med.name}</span>
+                  {selectedMeds.includes(med.id) && (
+                    <span className="text-blue-500 text-xl">✓</span>
+                  )}
+                </label>
+              ))}
+            </div>
           </div>
           
           {selectedMeds.length > 0 && (
-            <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200 text-sm">
-              ✅ {selectedMeds.length} medication(s) selected
+            <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-xl border-2 border-blue-200 text-sm font-semibold text-blue-800 flex items-center justify-center gap-2">
+              <span className="text-xl">✅</span>
+              <span>{selectedMeds.length} medication(s) selected</span>
             </div>
           )}
           
           <button
             onClick={handleMedTaken}
             disabled={loading || selectedMeds.length === 0}
-            className="w-full bg-blue-600 text-white p-2 rounded font-semibold hover:bg-blue-700 disabled:bg-gray-400 transition"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-2"
           >
-            {loading ? 'Logging...' : `Confirm Taken (${selectedMeds.length})`}
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span>Logging...</span>
+              </>
+            ) : (
+              <>
+                <span>✓</span>
+                <span>Confirm Taken ({selectedMeds.length})</span>
+              </>
+            )}
           </button>
             </>
           )}
@@ -591,15 +644,18 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
 
       {/* Vitals form */}
       {activeTab === 'vitals' && (
-        <div className="bg-white p-4 rounded-lg border border-blue-200 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">Enter Vitals</h3>
+        <div className="bg-white p-6 rounded-2xl border-2 border-green-100 shadow-xl mb-6 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <span className="text-2xl">📊</span>
+              <span>Enter Vitals</span>
+            </h3>
             <button
               onClick={() => setVoiceMode({ ...voiceMode, vitals: !voiceMode.vitals })}
-              className={`px-3 py-1 rounded text-sm font-medium transition ${
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105 ${
                 voiceMode.vitals
-                  ? 'bg-purple-100 text-purple-700 border border-purple-300'
-                  : 'bg-gray-100 text-gray-700 border border-gray-300'
+                  ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
               }`}
             >
               {voiceMode.vitals ? '✏️ Switch to Form' : '🎤 Use Voice'}
@@ -619,67 +675,81 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
           ) : (
             <>
 
-          <div className="mb-3">
-            <label className="text-sm font-medium">Blood Pressure</label>
-            <div className="flex gap-2">
+          <div className="mb-4">
+            <label className="block text-sm font-bold text-gray-700 mb-2">Blood Pressure (mmHg)</label>
+            <div className="flex gap-3 items-center">
               <input
                 type="number"
                 placeholder="Systolic"
                 value={systolic}
                 onChange={(e) => setSystolic(e.target.value)}
-                className="flex-1 p-2 border rounded"
+                className="flex-1 p-3 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all outline-none font-medium"
               />
-              <span className="flex items-center">/</span>
+              <span className="text-2xl font-bold text-gray-400">/</span>
               <input
                 type="number"
                 placeholder="Diastolic"
                 value={diastolic}
                 onChange={(e) => setDiastolic(e.target.value)}
-                className="flex-1 p-2 border rounded"
+                className="flex-1 p-3 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all outline-none font-medium"
               />
             </div>
           </div>
 
-          <div className="mb-3">
-            <label className="text-sm font-medium">Glucose (mg/dL)</label>
+          <div className="mb-4">
+            <label className="block text-sm font-bold text-gray-700 mb-2">Glucose (mg/dL)</label>
             <input
               type="number"
-              placeholder="Enter glucose"
+              placeholder="Enter glucose level"
               value={glucose}
               onChange={(e) => setGlucose(e.target.value)}
-              className="w-full p-2 border rounded"
+              className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all outline-none font-medium"
             />
           </div>
 
-          <div className="mb-3">
-            <label className="text-sm font-medium">Weight (kg)</label>
+          <div className="mb-4">
+            <label className="block text-sm font-bold text-gray-700 mb-2">Weight (kg)</label>
             <input
               type="number"
+              step="0.1"
               placeholder="Enter weight"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
-              className="w-full p-2 border rounded"
+              className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all outline-none font-medium"
             />
           </div>
 
-          <div className="mb-3">
-            <label className="text-sm font-medium">Peak Flow (L/min)</label>
+          <div className="mb-6">
+            <label className="block text-sm font-bold text-gray-700 mb-2">Peak Flow (L/min)</label>
             <input
               type="number"
               placeholder="Enter peak flow"
               value={peakFlow}
               onChange={(e) => setPeakFlow(e.target.value)}
-              className="w-full p-2 border rounded"
+              className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all outline-none font-medium mb-2"
             />
-            <p className="text-xs text-gray-500 mt-1">🫁 For asthma/respiratory tracking</p>
+            <p className="text-xs text-gray-500 flex items-center gap-1">
+              <span>🫁</span>
+              <span>For asthma/respiratory tracking</span>
+            </p>
           </div>
 
           <button
             onClick={handleVitalsSubmit}
             disabled={loading}
-            className="w-full bg-blue-600 text-white p-2 rounded font-semibold hover:bg-blue-700 disabled:bg-gray-400"
+            className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white p-4 rounded-xl font-bold text-lg hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-2"
           >
-            {loading ? 'Logging...' : 'Log Vitals'}
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span>Logging...</span>
+              </>
+            ) : (
+              <>
+                <span>✓</span>
+                <span>Log Vitals</span>
+              </>
+            )}
           </button>
             </>
           )}
@@ -688,15 +758,18 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
 
       {/* Symptoms form */}
       {activeTab === 'symptom' && (
-        <div className="bg-white p-4 rounded-lg border border-blue-200 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">Select Symptom</h3>
+        <div className="bg-white p-6 rounded-2xl border-2 border-orange-100 shadow-xl mb-6 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <span className="text-2xl">😷</span>
+              <span>Select Symptom</span>
+            </h3>
             <button
               onClick={() => setVoiceMode({ ...voiceMode, symptom: !voiceMode.symptom })}
-              className={`px-3 py-1 rounded text-sm font-medium transition ${
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105 ${
                 voiceMode.symptom
-                  ? 'bg-purple-100 text-purple-700 border border-purple-300'
-                  : 'bg-gray-100 text-gray-700 border border-gray-300'
+                  ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
               }`}
             >
               {voiceMode.symptom ? '✏️ Switch to Form' : '🎤 Use Voice'}
@@ -716,33 +789,40 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
           ) : (
             <>
 
-          <select
-            value={selectedSymptom}
-            onChange={(e) => setSelectedSymptom(e.target.value)}
-            className="w-full p-2 border rounded mb-3"
-          >
-            <option value="">Choose symptom...</option>
-            {SYMPTOMS.map((sym) => (
-              <option key={sym.name} value={sym.name}>
-                {sym.icon} {sym.name}
-              </option>
-            ))}
-          </select>
+          <div className="mb-4">
+            <label className="block text-sm font-bold text-gray-700 mb-2">Select Symptom</label>
+            <select
+              value={selectedSymptom}
+              onChange={(e) => setSelectedSymptom(e.target.value)}
+              className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all outline-none font-medium bg-white"
+            >
+              <option value="">Choose symptom...</option>
+              {SYMPTOMS.map((sym) => (
+                <option key={sym.name} value={sym.name}>
+                  {sym.icon} {sym.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <div className="mb-3">
-            <label className="text-sm font-medium">Severity</label>
-            <div className="flex gap-2">
+          <div className="mb-6">
+            <label className="block text-sm font-bold text-gray-700 mb-3">Severity Level</label>
+            <div className="flex gap-3">
               {[1, 2, 3].map((sev) => (
                 <button
                   key={sev}
                   onClick={() => setSymptomSeverity(sev)}
-                  className={`flex-1 p-2 rounded ${
+                  className={`flex-1 p-4 rounded-xl font-bold transition-all duration-200 transform hover:scale-105 ${
                     symptomSeverity === sev
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200'
+                      ? sev === 1
+                        ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg'
+                        : sev === 2
+                        ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white shadow-lg'
+                        : 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 border-2 border-gray-300 hover:border-gray-400'
                   }`}
                 >
-                  {sev === 1 ? 'Mild' : sev === 2 ? 'Moderate' : 'Severe'}
+                  {sev === 1 ? '😊 Mild' : sev === 2 ? '😐 Moderate' : '😰 Severe'}
                 </button>
               ))}
             </div>
@@ -750,10 +830,20 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
 
           <button
             onClick={handleSymptomSubmit}
-            disabled={loading}
-            className="w-full bg-blue-600 text-white p-2 rounded font-semibold hover:bg-blue-700 disabled:bg-gray-400"
+            disabled={loading || !selectedSymptom}
+            className="w-full bg-gradient-to-r from-orange-600 to-orange-700 text-white p-4 rounded-xl font-bold text-lg hover:from-orange-700 hover:to-orange-800 disabled:from-gray-400 disabled:to-gray-500 transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-2"
           >
-            {loading ? 'Logging...' : 'Log Symptom'}
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span>Logging...</span>
+              </>
+            ) : (
+              <>
+                <span>✓</span>
+                <span>Log Symptom</span>
+              </>
+            )}
           </button>
             </>
           )}
@@ -762,11 +852,16 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
 
       {/* Voice/Note form */}
       {activeTab === 'note' && (
-        <div className="bg-white p-4 rounded-lg border border-blue-200 mb-4">
-          <h3 className="font-semibold mb-3">🎤 Voice Input</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Speak naturally about your health. We'll automatically detect if it's a vital, symptom, or medication.
-          </p>
+        <div className="bg-white p-6 rounded-2xl border-2 border-purple-100 shadow-xl mb-6 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="mb-4">
+            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2 mb-2">
+              <span className="text-2xl">🎤</span>
+              <span>Voice Input</span>
+            </h3>
+            <p className="text-sm text-gray-600">
+              Speak naturally about your health. We'll automatically detect if it's a vital, symptom, or medication.
+            </p>
+          </div>
           
           <VoiceInput
             userId={userId}
@@ -778,43 +873,51 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
           
           {/* Manual Log Button - appears after normalization */}
           {showManualLogButton && pendingNormalizedEvent && (
-            <div className="mt-4 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg shadow-md">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-2xl">📋</span>
-                <h4 className="font-bold text-lg text-yellow-900">Ready to Log Event</h4>
+            <div className="mt-6 p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-2xl shadow-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-3xl">📋</span>
+                <h4 className="font-bold text-xl text-gray-800">Ready to Log Event</h4>
               </div>
               
-              <div className="bg-white p-3 rounded border border-yellow-200 mb-3">
-                <p className="text-sm text-gray-700 mb-2">
-                  <strong>Type:</strong> <span className="font-semibold text-blue-700 capitalize">{pendingNormalizedEvent.type}</span>
-                </p>
-                <p className="text-sm text-gray-700 mb-2">
-                  <strong>Payload:</strong>
-                </p>
-                <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-32 border border-gray-200">
-                  {JSON.stringify(pendingNormalizedEvent.payload, null, 2)}
-                </pre>
+              <div className="bg-white p-4 rounded-xl border-2 border-yellow-200 mb-4 shadow-inner">
+                <div className="mb-3">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Event Type</span>
+                  <p className="text-lg font-bold text-purple-700 capitalize mt-1">{pendingNormalizedEvent.type}</p>
+                </div>
+                <div className="mb-3">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Data Extracted</span>
+                  <pre className="text-xs bg-gray-50 p-3 rounded-lg overflow-auto max-h-40 border border-gray-200 mt-2 font-mono">
+                    {JSON.stringify(pendingNormalizedEvent.payload, null, 2)}
+                  </pre>
+                </div>
                 {pendingNormalizedEvent.confidence && (
-                  <p className="text-xs text-gray-600 mt-2">
-                    Confidence: {(pendingNormalizedEvent.confidence * 100).toFixed(0)}%
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-500">Confidence:</span>
+                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all"
+                        style={{ width: `${(pendingNormalizedEvent.confidence * 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs font-bold text-gray-700">{(pendingNormalizedEvent.confidence * 100).toFixed(0)}%</span>
+                  </div>
                 )}
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <button
                   onClick={handleManualLogEvent}
                   disabled={loading}
-                  className="flex-1 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 transition flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-bold hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                       <span>Logging...</span>
                     </>
                   ) : (
                     <>
-                      <span>✅</span>
+                      <span className="text-xl">✅</span>
                       <span>Log Event</span>
                     </>
                   )}
@@ -826,7 +929,7 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
                     setMessage('');
                   }}
                   disabled={loading}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-400 disabled:bg-gray-200 transition"
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 disabled:bg-gray-100 transition-all duration-200 transform hover:scale-105"
                 >
                   Cancel
                 </button>
@@ -835,27 +938,43 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
           )}
           
           {/* Manual close button for testing */}
-          <div className="mt-4 flex gap-2">
+          <div className="mt-6">
             <button
               onClick={() => {
                 setActiveTab(null);
                 setShowManualLogButton(false);
                 setPendingNormalizedEvent(null);
               }}
-              className="flex-1 py-2 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 transition"
+              className="w-full py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl font-bold hover:from-gray-600 hover:to-gray-700 transition-all duration-200 transform hover:scale-[1.02] shadow-md hover:shadow-lg flex items-center justify-center gap-2"
             >
-              ✓ Done - Close Tab
+              <span>✓</span>
+              <span>Done - Close Tab</span>
             </button>
           </div>
           
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs text-gray-700">
-              <strong>💡 Examples:</strong><br/>
-              • "My blood pressure is 140 over 90"<br/>
-              • "I have a headache, severity 3"<br/>
-              • "I took my metformin"<br/>
-              • "My glucose is 120"
+          <div className="mt-6 p-4 bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl">
+            <p className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+              <span className="text-lg">💡</span>
+              <span>Examples:</span>
             </p>
+            <ul className="space-y-1.5 text-xs text-gray-700">
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1">•</span>
+                <span>"My blood pressure is 140 over 90"</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1">•</span>
+                <span>"I have a headache, severity 3"</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1">•</span>
+                <span>"I took my metformin"</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1">•</span>
+                <span>"My glucose is 120"</span>
+              </li>
+            </ul>
           </div>
         </div>
       )}

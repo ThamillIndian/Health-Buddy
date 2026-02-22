@@ -43,12 +43,12 @@ export default function Header({ title, subtitle, actions }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-30">
+    <header className="bg-white border-b-2 border-gray-200 shadow-md sticky top-0 z-30 backdrop-blur-sm bg-white/95">
       <div className="flex items-center justify-between p-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">{title}</h1>
           {subtitle && (
-            <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
+            <p className="text-sm text-gray-600 mt-1.5 font-medium">{subtitle}</p>
           )}
         </div>
 
@@ -61,11 +61,11 @@ export default function Header({ title, subtitle, actions }: HeaderProps) {
               <button
                 onClick={handleBellClick}
                 disabled={isLoading}
-                className={`p-2 rounded-lg transition text-lg relative ${
+                className={`p-3 rounded-xl transition-all duration-200 text-xl relative transform hover:scale-110 ${
                   isEnabled
-                    ? 'bg-yellow-50 hover:bg-yellow-100 text-yellow-600'
+                    ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 hover:from-yellow-100 hover:to-yellow-200 text-yellow-600 shadow-md'
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                } disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none`}
                 title={
                   isEnabled
                     ? 'Notifications enabled - Click to view options'
@@ -74,7 +74,7 @@ export default function Header({ title, subtitle, actions }: HeaderProps) {
               >
                 🔔
                 {isEnabled && (
-                  <span className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                  <span className="absolute top-1 right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse ring-2 ring-white"></span>
                 )}
               </button>
 
@@ -139,7 +139,7 @@ export default function Header({ title, subtitle, actions }: HeaderProps) {
           {isInstallable && !isInstalled && (
             <button
               onClick={handleInstall}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold text-sm"
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 font-bold text-sm shadow-md hover:shadow-lg"
               title="Install Health Buddy as an app"
             >
               📱 Install App
@@ -148,7 +148,7 @@ export default function Header({ title, subtitle, actions }: HeaderProps) {
 
           {/* Installed Indicator */}
           {isInstalled && (
-            <div className="px-4 py-2 bg-green-50 text-green-700 rounded-lg border border-green-200 text-sm font-semibold">
+            <div className="px-4 py-2.5 bg-gradient-to-r from-green-50 to-green-100 text-green-700 rounded-xl border-2 border-green-200 text-sm font-bold shadow-sm">
               ✅ App Installed
             </div>
           )}
@@ -156,7 +156,7 @@ export default function Header({ title, subtitle, actions }: HeaderProps) {
           {/* Dark Mode Toggle */}
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
-            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-lg"
+            className="p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition-all duration-200 transform hover:scale-110 text-lg shadow-sm"
             title="Toggle dark mode"
           >
             {isDarkMode ? '☀️' : '🌙'}

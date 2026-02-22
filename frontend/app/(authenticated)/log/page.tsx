@@ -28,14 +28,15 @@ export default function LogPage() {
         subtitle="Log your vitals, medications, and symptoms"
       />
 
-      <div className="p-6">
+      <div className="p-6 bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 min-h-screen">
         {userId ? (
-          <div className="max-w-2xl">
+          <div className="max-w-3xl mx-auto">
             <QuickLog userId={userId} onEventLogged={handleEventLogged} />
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-600">Loading...</p>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="text-gray-600 mt-4 font-medium">Loading...</p>
           </div>
         )}
       </div>
