@@ -49,6 +49,10 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
     med: false,
   });
 
+  // Manual log functionality for voice/note tab
+  const [pendingNormalizedEvent, setPendingNormalizedEvent] = useState<any>(null);
+  const [showManualLogButton, setShowManualLogButton] = useState(false);
+
   // Load saved medications on mount
   useEffect(() => {
     loadSavedMedications();
@@ -307,8 +311,13 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
 
   // Handle voice transcription for general note/voice input
   const handleVoiceNoteTranscribe = (text: string) => {
-    setMessage(`🎤 Transcribed: "${text}"`);
-    setTimeout(() => setMessage(''), 3000);
+    console.log('Transcript received:', text);
+    // Clear any pending normalized event when new transcription starts
+    if (text && text.trim()) {
+      setPendingNormalizedEvent(null);
+      setShowManualLogButton(false);
+    }
+    // Don't show message here - VoiceInput component handles display
   };
 
   const handleVoiceNoteNormalize = async (event: any) => {
@@ -318,21 +327,61 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
       return;
     }
 
+    // Debug logging
+    console.log('📋 Normalized event received:', event);
+    console.log('📋 Event type:', event.type);
+    console.log('📋 Event payload:', event.payload);
+    
+    // Store the event for manual review instead of auto-logging
+    setPendingNormalizedEvent(event);
+    setShowManualLogButton(true);
+    
+    // Show appropriate message based on event type
+    if (event.type === 'vital') {
+      const vitals = [];
+      if (event.payload.bp) vitals.push(`BP: ${event.payload.bp}`);
+      if (event.payload.glucose) vitals.push(`Glucose: ${event.payload.glucose}`);
+      if (event.payload.weight) vitals.push(`Weight: ${event.payload.weight}kg`);
+      if (event.payload.peak_flow) vitals.push(`Peak Flow: ${event.payload.peak_flow}`);
+      
+      setMessage(`✅ Detected vitals: ${vitals.join(', ')}. Click "Log Event" to save.`);
+    } else if (event.type === 'symptom') {
+      setMessage(`✅ Detected symptom: ${event.payload.name || 'Unknown'} (Severity: ${event.payload.severity || 2}/3). Click "Log Event" to save.`);
+    } else if (event.type === 'medication') {
+      setMessage(`✅ Detected medication: ${event.payload.medication_name || 'Unknown'}. Click "Log Event" to save.`);
+    } else {
+      setMessage('⚠️ Could not parse vitals. You can still log as a note.');
+    }
+    
+    setTimeout(() => setMessage(''), 8000);
+  };
+
+  // Manual log function - logs the pending normalized event
+  const handleManualLogEvent = async () => {
+    if (!pendingNormalizedEvent) return;
+    
     try {
       setLoading(true);
       
-      // Auto-log the event based on normalized type
-      const response = await apiClient.logEvent(userId, {
-        type: event.type,
-        payload: event.payload,
+      const eventData = {
+        type: pendingNormalizedEvent.type,
+        payload: pendingNormalizedEvent.payload,
         source: 'voice',
-        language: 'en',
-      });
+        language: pendingNormalizedEvent.language || 'en',
+        raw_text: pendingNormalizedEvent.original_text || undefined,
+        confidence: pendingNormalizedEvent.confidence || undefined,
+      };
+      
+      console.log('📤 Sending event to backend:', eventData);
+      
+      const response = await apiClient.logEvent(userId, eventData);
+      
+      console.log('✅ Event logged successfully:', response.data);
 
       // Handle critical symptoms
-      if (event.type === 'symptom' && response.data.critical_symptom) {
-        const symptomName = event.payload.name || 'Unknown';
-        const severity = event.payload.severity || 2;
+      if (pendingNormalizedEvent.type === 'symptom' && response.data.critical_symptom) {
+        const symptomName = pendingNormalizedEvent.payload.name || 'Unknown';
+        const severity = pendingNormalizedEvent.payload.severity || 2;
         setCriticalSymptomData({ name: symptomName, severity });
         setShowCriticalAlert(true);
         
@@ -341,13 +390,15 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
         }
       }
 
-      setMessage(`✅ ${event.type} logged successfully from voice!`);
-      setActiveTab(null);
+      setMessage(`✅ ${pendingNormalizedEvent.type} logged successfully!`);
+      setPendingNormalizedEvent(null);
+      setShowManualLogButton(false);
       onEventLogged?.();
       
-      setTimeout(() => setMessage(''), 3000);
+      setTimeout(() => setMessage(''), 5000);
     } catch (error: any) {
       setMessage('❌ ' + (error.response?.data?.detail || 'Failed to log event'));
+      setTimeout(() => setMessage(''), 5000);
     } finally {
       setLoading(false);
     }
@@ -724,6 +775,78 @@ export default function QuickLog({ userId, onEventLogged }: QuickLogProps) {
             onTranscribe={handleVoiceNoteTranscribe}
             onNormalize={handleVoiceNoteNormalize}
           />
+          
+          {/* Manual Log Button - appears after normalization */}
+          {showManualLogButton && pendingNormalizedEvent && (
+            <div className="mt-4 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg shadow-md">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-2xl">📋</span>
+                <h4 className="font-bold text-lg text-yellow-900">Ready to Log Event</h4>
+              </div>
+              
+              <div className="bg-white p-3 rounded border border-yellow-200 mb-3">
+                <p className="text-sm text-gray-700 mb-2">
+                  <strong>Type:</strong> <span className="font-semibold text-blue-700 capitalize">{pendingNormalizedEvent.type}</span>
+                </p>
+                <p className="text-sm text-gray-700 mb-2">
+                  <strong>Payload:</strong>
+                </p>
+                <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-32 border border-gray-200">
+                  {JSON.stringify(pendingNormalizedEvent.payload, null, 2)}
+                </pre>
+                {pendingNormalizedEvent.confidence && (
+                  <p className="text-xs text-gray-600 mt-2">
+                    Confidence: {(pendingNormalizedEvent.confidence * 100).toFixed(0)}%
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={handleManualLogEvent}
+                  disabled={loading}
+                  className="flex-1 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 transition flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Logging...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✅</span>
+                      <span>Log Event</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowManualLogButton(false);
+                    setPendingNormalizedEvent(null);
+                    setMessage('');
+                  }}
+                  disabled={loading}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-400 disabled:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* Manual close button for testing */}
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => {
+                setActiveTab(null);
+                setShowManualLogButton(false);
+                setPendingNormalizedEvent(null);
+              }}
+              className="flex-1 py-2 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 transition"
+            >
+              ✓ Done - Close Tab
+            </button>
+          </div>
           
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-xs text-gray-700">

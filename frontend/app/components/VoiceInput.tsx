@@ -30,6 +30,7 @@ export default function VoiceInput({
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [normalizedEvent, setNormalizedEvent] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const {
@@ -56,6 +57,7 @@ export default function VoiceInput({
     
     setUploading(true);
     setError(null);
+    setTranscript(''); // Clear previous transcript
     
     try {
       // Convert Blob to File for upload
@@ -65,19 +67,49 @@ export default function VoiceInput({
       const response = await apiClient.transcribeAudio(audioFile, language, mode);
       const transcribedText = response.data.transcript;
       
+      // Show transcript immediately for testing
       setTranscript(transcribedText);
       onTranscribe(transcribedText);
       
-      // Auto-normalize if callback provided
+      // Auto-normalize if callback provided (after showing transcript)
       if (onNormalize) {
         try {
+          // Auto-detect language from transcript
+          let detectedLanguage = language.split('-')[0]; // Default to provided language
+          
+          // Check for Tamil characters (Tamil Unicode range: 0B80-0BFF)
+          if (/[\u0B80-\u0BFF]/.test(transcribedText)) {
+            detectedLanguage = 'ta';
+          }
+          // Check for Hindi/Devanagari characters (Devanagari Unicode range: 0900-097F)
+          else if (/[\u0900-\u097F]/.test(transcribedText)) {
+            detectedLanguage = 'hi';
+          }
+          // Check for Hinglish patterns (Hindi words + English)
+          else if (/\b(mera|meri|mujhe|maine|hai|li|le)\b/i.test(transcribedText)) {
+            detectedLanguage = 'en'; // Hinglish uses English patterns
+          }
+          
+          console.log(`Detected language: ${detectedLanguage} for transcript: "${transcribedText}"`);
+          
           const normalizeResponse = await apiClient.normalizeText(
             transcribedText, 
-            language.split('-')[0] // Extract language code (e.g., 'en' from 'en-IN')
+            detectedLanguage
           );
-          onNormalize(normalizeResponse.data.normalized_event);
+          
+          // Check if normalization was successful
+          if (normalizeResponse.data && normalizeResponse.data.normalized_event) {
+            const normalized = normalizeResponse.data.normalized_event;
+            console.log('✅ Normalized event:', normalized);
+            setNormalizedEvent(normalized); // Store for display
+            onNormalize(normalized);
+          } else {
+            console.warn('⚠️ Normalization returned no event data');
+            setNormalizedEvent(null);
+          }
         } catch (err) {
           console.error('Normalization error:', err);
+          setNormalizedEvent(null);
           // Don't show error to user - normalization is optional
         }
       }
@@ -136,25 +168,56 @@ export default function VoiceInput({
     
     setUploading(true);
     setError(null);
+    setTranscript(''); // Clear previous transcript
     
     try {
       // Transcribe using Sarvam AI
       const response = await apiClient.transcribeAudio(selectedFile, language, mode);
       const transcribedText = response.data.transcript;
       
+      // Show transcript immediately for testing
       setTranscript(transcribedText);
       onTranscribe(transcribedText);
       
-      // Auto-normalize if callback provided
+      // Auto-normalize if callback provided (after showing transcript)
       if (onNormalize) {
         try {
+          // Auto-detect language from transcript
+          let detectedLanguage = language.split('-')[0]; // Default to provided language
+          
+          // Check for Tamil characters (Tamil Unicode range: 0B80-0BFF)
+          if (/[\u0B80-\u0BFF]/.test(transcribedText)) {
+            detectedLanguage = 'ta';
+          }
+          // Check for Hindi/Devanagari characters (Devanagari Unicode range: 0900-097F)
+          else if (/[\u0900-\u097F]/.test(transcribedText)) {
+            detectedLanguage = 'hi';
+          }
+          // Check for Hinglish patterns (Hindi words + English)
+          else if (/\b(mera|meri|mujhe|maine|hai|li|le)\b/i.test(transcribedText)) {
+            detectedLanguage = 'en'; // Hinglish uses English patterns
+          }
+          
+          console.log(`Detected language: ${detectedLanguage} for transcript: "${transcribedText}"`);
+          
           const normalizeResponse = await apiClient.normalizeText(
             transcribedText, 
-            language.split('-')[0]
+            detectedLanguage
           );
-          onNormalize(normalizeResponse.data.normalized_event);
+          
+          // Check if normalization was successful
+          if (normalizeResponse.data && normalizeResponse.data.normalized_event) {
+            const normalized = normalizeResponse.data.normalized_event;
+            console.log('✅ Normalized event:', normalized);
+            setNormalizedEvent(normalized); // Store for display
+            onNormalize(normalized);
+          } else {
+            console.warn('⚠️ Normalization returned no event data');
+            setNormalizedEvent(null);
+          }
         } catch (err) {
           console.error('Normalization error:', err);
+          setNormalizedEvent(null);
         }
       }
       
@@ -355,13 +418,59 @@ export default function VoiceInput({
         </div>
       )}
 
-      {/* Transcript Display */}
+      {/* Show loading state during transcription */}
+      {uploading && !transcript && (
+        <div className="p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-600"></div>
+            <p className="text-yellow-800 font-medium">
+              ⏳ Transcribing audio with Sarvam AI...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Transcript Display - Enhanced for Testing */}
       {transcript && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-sm text-gray-700 mb-1">
-            <strong>✅ Transcribed:</strong>
+        <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-lg shadow-md">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-2xl">📝</span>
+            <h4 className="font-bold text-lg text-blue-900">Transcription Result (Testing)</h4>
+          </div>
+          <div className="bg-white p-3 rounded border border-blue-200">
+            <p className="text-base font-semibold text-gray-800 break-words">
+              "{transcript}"
+            </p>
+          </div>
+          <p className="text-xs text-blue-700 mt-2">
+            ✅ Raw transcript from Sarvam AI • Length: {transcript.length} characters
           </p>
-          <p className="text-green-800 font-medium">{transcript}</p>
+        </div>
+      )}
+
+      {/* Normalized Event Display - For Debugging */}
+      {normalizedEvent && (
+        <div className="p-4 bg-purple-50 border-2 border-purple-300 rounded-lg shadow-md">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-2xl">🔍</span>
+            <h4 className="font-bold text-lg text-purple-900">Normalized Event (Debug)</h4>
+          </div>
+          <div className="bg-white p-3 rounded border border-purple-200">
+            <p className="text-sm text-gray-700 mb-2">
+              <strong>Type:</strong> <span className="font-semibold text-purple-700">{normalizedEvent.type}</span>
+            </p>
+            <p className="text-sm text-gray-700 mb-2">
+              <strong>Payload:</strong>
+            </p>
+            <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-40">
+              {JSON.stringify(normalizedEvent.payload, null, 2)}
+            </pre>
+            {normalizedEvent.confidence && (
+              <p className="text-xs text-gray-600 mt-2">
+                Confidence: {(normalizedEvent.confidence * 100).toFixed(0)}%
+              </p>
+            )}
+          </div>
         </div>
       )}
 

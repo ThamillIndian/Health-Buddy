@@ -80,16 +80,130 @@ async def normalize_text(
     """
     Normalize transcribed text into structured health event
     
-    This endpoint takes transcribed text and converts it into a structured
-    health event (vital, symptom, medication, etc.) using the normalization service.
+    Flow: Sarvam (transcription) → Gemini (normalization) → Qwen (fallback) → Regex (final fallback)
+    
+    Uses Gemini LLM first (if available) for intelligent extraction with better multilingual support,
+    falls back to Qwen if Gemini fails, then to regex-based normalization if both fail.
     
     Example inputs:
     - "My blood pressure is 140 over 90" → vital event
     - "I have a headache, severity 3" → symptom event
     - "I took my metformin" → medication event
+    - "என் ரத்த அமுதம் 190/90, சர்க்கரை 170" → vital event (Tamil)
     """
+    from app.services.gemini_service import GeminiService
+    from app.services.qwen_service import QwenService
     from app.services.normalization import NormalizationAgent
     
+    # Try Gemini first (if available) - best for multilingual support
+    gemini_service = GeminiService()
+    if gemini_service.enabled:
+        gemini_result = gemini_service.normalize_health_text(text, language)
+        if gemini_result and gemini_result.get("type") != "note":
+            # Gemini successfully extracted structured data
+            return {
+                "status": "success",
+                "original_text": text,
+                "normalized_event": gemini_result,
+                "confidence": gemini_result.get("confidence", 0.95),
+                "method": "gemini"
+            }
+        elif gemini_result and gemini_result.get("type") == "note":
+            # Gemini returned a note - try Qwen as fallback
+            qwen_service = QwenService()
+            if qwen_service.enabled:
+                qwen_result = qwen_service.normalize_health_text(text, language)
+                if qwen_result and qwen_result.get("type") != "note":
+                    # Qwen found something better than a note
+                    return {
+                        "status": "success",
+                        "original_text": text,
+                        "normalized_event": qwen_result,
+                        "confidence": qwen_result.get("confidence", 0.9),
+                        "method": "qwen"
+                    }
+                elif qwen_result:
+                    # Both returned note, use Gemini's result
+                    return {
+                        "status": "success",
+                        "original_text": text,
+                        "normalized_event": gemini_result,
+                        "confidence": gemini_result.get("confidence", 0.95),
+                        "method": "gemini"
+                    }
+            # Qwen not available, try regex
+            try:
+                normalizer = NormalizationAgent()
+                regex_result = normalizer.normalize_event(text, language)
+                if regex_result and regex_result.get("type") != "note":
+                    return {
+                        "status": "success",
+                        "original_text": text,
+                        "normalized_event": regex_result,
+                        "confidence": regex_result.get("confidence", 0.5),
+                        "method": "regex"
+                    }
+                else:
+                    return {
+                        "status": "success",
+                        "original_text": text,
+                        "normalized_event": gemini_result,
+                        "confidence": gemini_result.get("confidence", 0.95),
+                        "method": "gemini"
+                    }
+            except Exception:
+                return {
+                    "status": "success",
+                    "original_text": text,
+                    "normalized_event": gemini_result,
+                    "confidence": gemini_result.get("confidence", 0.95),
+                    "method": "gemini"
+                }
+    
+    # Gemini not available, try Qwen as primary fallback
+    qwen_service = QwenService()
+    if qwen_service.enabled:
+        qwen_result = qwen_service.normalize_health_text(text, language)
+        if qwen_result and qwen_result.get("type") != "note":
+            # Qwen successfully extracted structured data
+            return {
+                "status": "success",
+                "original_text": text,
+                "normalized_event": qwen_result,
+                "confidence": qwen_result.get("confidence", 0.9),
+                "method": "qwen"
+            }
+        elif qwen_result and qwen_result.get("type") == "note":
+            # Qwen returned a note, try regex
+            try:
+                normalizer = NormalizationAgent()
+                regex_result = normalizer.normalize_event(text, language)
+                if regex_result and regex_result.get("type") != "note":
+                    return {
+                        "status": "success",
+                        "original_text": text,
+                        "normalized_event": regex_result,
+                        "confidence": regex_result.get("confidence", 0.5),
+                        "method": "regex"
+                    }
+                else:
+                    return {
+                        "status": "success",
+                        "original_text": text,
+                        "normalized_event": qwen_result,
+                        "confidence": qwen_result.get("confidence", 0.9),
+                        "method": "qwen"
+                    }
+            except Exception:
+                return {
+                    "status": "success",
+                    "original_text": text,
+                    "normalized_event": qwen_result,
+                    "confidence": qwen_result.get("confidence", 0.9),
+                    "method": "qwen"
+                }
+    
+    # Final fallback to regex-based normalization
     try:
         normalizer = NormalizationAgent()
         event_data = normalizer.normalize_event(text, language)
@@ -98,7 +212,8 @@ async def normalize_text(
             "status": "success",
             "original_text": text,
             "normalized_event": event_data,
-            "confidence": event_data.get("confidence", 0.5)
+            "confidence": event_data.get("confidence", 0.5),
+            "method": "regex"
         }
     except Exception as e:
         raise HTTPException(

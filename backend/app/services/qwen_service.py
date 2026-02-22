@@ -4,7 +4,9 @@ Uses LM Studio's HTTP API (OpenAI-compatible)
 """
 import os
 import requests
-from typing import Optional
+import json
+import uuid
+from typing import Optional, Dict, Any
 from datetime import datetime
 import logging
 
@@ -202,6 +204,112 @@ Summary:"""
             return "⚠️ Some metrics are elevated. Monitor closely and follow your care plan."
         else:
             return "✅ Your health looks stable. Keep up the good work!"
+    
+    def normalize_health_text(self, text: str, language: str = "en") -> Optional[Dict[str, Any]]:
+        """
+        Use Qwen to normalize transcribed health text into structured event
+        Returns structured event dict or None if parsing fails
+        """
+        if not self.enabled:
+            return None
+        
+        prompt = f"""You are a health data extraction assistant. Extract health information from the following text in {language}.
+
+Text: "{text}"
+
+Extract ALL health data found and return ONLY a valid JSON object with this exact structure:
+{{
+  "type": "vital|symptom|medication|note",
+  "payload": {{
+    "bp": "systolic/diastolic" (if blood pressure found, e.g., "140/90"),
+    "systolic": number (if BP found),
+    "diastolic": number (if BP found),
+    "glucose": number (if blood sugar found, in mg/dL),
+    "weight": number (if weight found, in kg),
+    "peak_flow": number (if peak flow found, in L/min),
+    "name": "symptom name" (if symptom found),
+    "severity": 1-3 (if symptom found: 1=mild, 2=moderate, 3=severe),
+    "medication_name": "name" (if medication found),
+    "action": "taken" (if medication found),
+    "text": "original text" (only if type is "note" and nothing else found)
+  }}
+}}
+
+Rules:
+- Extract ALL vitals found (can have multiple: bp, glucose, weight, peak_flow)
+- If multiple vitals found, type should be "vital"
+- If symptom found, type is "symptom" with name and severity
+- If medication found, type is "medication" with medication_name and action="taken"
+- If nothing health-related found, type is "note" with text field
+- Return ONLY the JSON, no explanation, no markdown, no code blocks
+- Numbers should be actual numbers, not strings (except bp which is "systolic/diastolic")
+
+Examples:
+Input: "My blood pressure is 140 over 90, sugar 170, weight 80"
+Output: {{"type": "vital", "payload": {{"bp": "140/90", "systolic": 140, "diastolic": 90, "glucose": 170, "weight": 80}}}}
+
+Input: "என் ரத்த அமுதம் 190/90, சர்க்கரை 170, எடை 80"
+Output: {{"type": "vital", "payload": {{"bp": "190/90", "systolic": 190, "diastolic": 90, "glucose": 170, "weight": 80}}}}
+
+Input: "I have a severe headache"
+Output: {{"type": "symptom", "payload": {{"name": "headache", "severity": 3}}}}
+
+Input: "I took my metformin"
+Output: {{"type": "medication", "payload": {{"medication_name": "metformin", "action": "taken"}}}}
+
+Now extract from: "{text}"
+
+JSON:"""
+
+        try:
+            response = self._call_qwen(prompt, max_tokens=300, temperature=0.1)  # Low temperature for accuracy
+            
+            if not response:
+                logger.warning("Qwen normalization: No response from LLM")
+                return None
+            
+            # Clean response - remove markdown code blocks if present
+            cleaned = response.strip()
+            if cleaned.startswith("```"):
+                # Remove opening code block
+                cleaned = cleaned.split("```")[1]
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:]
+                # Remove closing code block if present
+                if "```" in cleaned:
+                    cleaned = cleaned.split("```")[0]
+            cleaned = cleaned.strip()
+            
+            # Parse JSON
+            parsed = json.loads(cleaned)
+            
+            # Validate structure
+            if "type" not in parsed or "payload" not in parsed:
+                logger.warning(f"Qwen normalization: Invalid structure - missing type or payload")
+                return None
+            
+            # Validate type
+            if parsed["type"] not in ["vital", "symptom", "medication", "note"]:
+                logger.warning(f"Qwen normalization: Invalid type '{parsed['type']}'")
+                return None
+            
+            # Convert to our event format
+            return {
+                "id": str(uuid.uuid4()),
+                "type": parsed["type"],
+                "payload": parsed["payload"],
+                "source": "voice",
+                "language": language,
+                "confidence": 0.9  # High confidence for LLM extraction
+            }
+            
+        except json.JSONDecodeError as e:
+            logger.warning(f"Qwen normalization: JSON decode error - {str(e)}")
+            logger.debug(f"Response was: {response[:200] if response else 'None'}")
+            return None
+        except Exception as e:
+            logger.error(f"Qwen normalization error: {str(e)}")
+            return None
     
     @staticmethod
     def _get_default_doctor_summary(user_name: str, adherence_pct: float, risk_level: str) -> str:
