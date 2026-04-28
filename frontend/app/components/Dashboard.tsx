@@ -22,33 +22,26 @@ export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
   const [criticalAlerts, setCriticalAlerts] = useState<any[]>([]);
 
   useEffect(() => {
-    // Check for saved dark mode preference
     const saved = localStorage.getItem('darkMode');
-    if (saved) {
-      setDarkMode(JSON.parse(saved));
-    }
+    if (saved) setDarkMode(JSON.parse(saved));
   }, []);
 
   useEffect(() => {
-    // Refresh trends when data changes
     setRefreshKey(k => k + 1);
   }, [refreshTrigger]);
 
-  // Check for critical symptoms in recent alerts
   useEffect(() => {
     const checkCriticalSymptoms = async () => {
       if (!dashboard) return;
-      
-      // Request notification permission if not already set
+
       if ('Notification' in window && Notification.permission === 'default') {
         await Notification.requestPermission();
       }
-      
-      // Get recent events to check for critical symptoms
+
       try {
-        const eventsResponse = await apiClient.getEvents(userId, 1); // Last 24 hours
+        const eventsResponse = await apiClient.getEvents(userId, 1);
         const events = eventsResponse.data;
-        
+
         const critical = events.filter((event: any) => {
           if (event.type === 'symptom') {
             const symptomName = event.payload?.name || '';
@@ -57,30 +50,32 @@ export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
           }
           return false;
         });
-        
+
         setCriticalAlerts(critical);
-        
-        // Show browser notification for critical symptoms
+
         if (critical.length > 0 && 'Notification' in window && Notification.permission === 'granted') {
           critical.forEach((event: any) => {
-            // Show notification (browser handles duplicates via tag)
             const notificationTag = `critical-${event.id}`;
-            
+
             new Notification(`🚨 Critical: ${event.payload.name}`, {
               body: 'Immediate medical attention required',
               icon: '/favicon.ico',
               badge: '/favicon.ico',
               tag: notificationTag,
               requireInteraction: true,
-              vibrate: [200, 100, 200], // Vibrate pattern for mobile
             });
+
+            // ✅ Correct vibration usage
+            if ('vibrate' in navigator) {
+              navigator.vibrate([200, 100, 200]);
+            }
           });
         }
       } catch (error) {
         console.error('Failed to check critical symptoms:', error);
       }
     };
-    
+
     checkCriticalSymptoms();
   }, [dashboard, userId]);
 
@@ -90,127 +85,36 @@ export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
     localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
   };
 
-  if (loading) {
-    return (
-      <div className={`${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
-        <div className="max-w-2xl mx-auto p-4">
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin text-3xl">⏳</div>
-            <p className={`mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Loading dashboard...
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!dashboard) return <div>No data</div>;
 
-  if (error) {
-    return (
-      <div className={`${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
-        <div className="max-w-2xl mx-auto p-4">
-          <div className={`${darkMode ? 'bg-red-900 border-red-700' : 'bg-red-50 border-red-200'} border p-4 rounded-lg`}>
-            <p className={`${darkMode ? 'text-red-300' : 'text-red-700'}`}>Error: {error}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const statusColor =
+    dashboard.status === 'green'
+      ? 'green'
+      : dashboard.status === 'amber'
+      ? 'amber'
+      : 'red';
 
-  if (!dashboard) {
-    return (
-      <div className={`${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
-        <div className="max-w-2xl mx-auto p-4">
-          <div className="text-center py-12">
-            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              No data available. Start logging your health!
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const statusColor = dashboard.status === 'green' ? 'green' : 
-                      dashboard.status === 'amber' ? 'amber' : 'red';
   const statusBg = STATUS_COLORS[statusColor as keyof typeof STATUS_COLORS];
 
   return (
     <div className={`${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
-      <div className={`${darkMode ? 'dark' : ''} max-w-4xl mx-auto p-4`}>
-        {/* Header with Dark Mode Toggle */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-            🏥 Health Dashboard
-          </h1>
-          <button
-            onClick={toggleDarkMode}
-            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-              darkMode
-                ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-600'
-                : 'bg-gray-800 text-white hover:bg-gray-700'
-            }`}
-          >
-            {darkMode ? '☀️ Light' : '🌙 Dark'}
-          </button>
-        </div>
+      <div className="max-w-4xl mx-auto p-4">
+        <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
 
-        {/* Critical Symptom Banner */}
+        {/* Critical Alert Banner */}
         {criticalAlerts.length > 0 && (
-          <div className="bg-red-600 text-white p-4 rounded-lg mb-4 shadow-xl border-l-4 border-red-800 animate-pulse">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-3xl">🚨</span>
-              <div className="flex-1">
-                <h3 className="font-bold text-lg">Critical Symptom Detected</h3>
-                <p className="text-sm text-red-100">
-                  {criticalAlerts.map((alert: any) => alert.payload.name).join(', ')} - Immediate medical attention required
-                </p>
-              </div>
-              <button
-                onClick={() => window.location.href = 'tel:108'}
-                className="bg-white text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-50 transition"
-              >
-                📞 Call 108
-              </button>
-            </div>
-            
-            {/* Recommendations Section */}
-            {criticalAlerts.map((alert: any, index: number) => {
-              const recommendation = CRITICAL_SYMPTOM_RECOMMENDATIONS[alert.payload.name] || 
-                "This symptom requires immediate medical attention. Please seek help from a healthcare professional or emergency services.";
-              return (
-                <div key={index} className="bg-red-700 bg-opacity-50 border-l-4 border-red-300 p-3 rounded mt-2">
-                  <p className="text-white text-sm leading-relaxed">
-                    <span className="font-semibold">{alert.payload.name}:</span> {recommendation}
-                  </p>
-                </div>
-              );
-            })}
+          <div className="bg-red-600 text-white p-4 rounded mb-4">
+            🚨 Critical symptoms detected
           </div>
         )}
 
-        {/* Status Banner - Enhanced */}
-        <div className={`${statusBg} text-white p-6 rounded-lg mb-6 shadow-xl border-l-4`}>
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">
-                {STATUS_MESSAGES[statusColor as keyof typeof STATUS_MESSAGES]}
-              </h2>
-              <p className="text-lg opacity-95">Risk Score: {dashboard.score.toFixed(1)}/100</p>
-              {dashboard.metrics.recent_symptoms.length > 0 && (
-                <p className="text-sm mt-2 opacity-90">
-                  Symptoms: {dashboard.metrics.recent_symptoms.join(', ')}
-                </p>
-              )}
-            </div>
-            <div className="text-4xl">{statusColor === 'green' ? '✅' : statusColor === 'amber' ? '⚠️' : '🚨'}</div>
-          </div>
+        <div className={`${statusBg} text-white p-4 rounded mb-4`}>
+          {STATUS_MESSAGES[statusColor as keyof typeof STATUS_MESSAGES]}
         </div>
 
-        {/* Trends Chart */}
         <TrendsChart key={refreshKey} userId={userId} days={7} />
-
-        {/* Achievement Badges */}
         <AchievementBadges
           adherence={dashboard.metrics.adherence_pct || 0}
           daysLogged={dashboard.metrics.days_logged || 0}
@@ -218,156 +122,10 @@ export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
           streak={dashboard.metrics.consecutive_streak || 0}
         />
 
-        {/* Metrics Grid - Enhanced Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Adherence */}
-          <div className={`${darkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white to-blue-50/30 border-gray-200'} p-6 rounded-2xl border-2 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]`}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className={`text-lg font-bold ${darkMode ? 'text-gray-200' : 'text-gray-800'} flex items-center gap-2`}>
-                <span className="text-2xl">💊</span>
-                <span>Medication Adherence</span>
-              </h3>
-              <span className={`text-3xl font-bold ${dashboard.metrics.adherence_pct! >= 90 ? 'text-green-600' : 'text-blue-600'}`}>
-                {dashboard.metrics.adherence_pct?.toFixed(0)}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden shadow-inner">
-              <div
-                className={`h-4 rounded-full transition-all duration-500 ${
-                  dashboard.metrics.adherence_pct! >= 90
-                    ? 'bg-gradient-to-r from-green-400 via-green-500 to-green-600'
-                    : 'bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600'
-                }`}
-                style={{ width: `${dashboard.metrics.adherence_pct || 0}%` }}
-              />
-            </div>
-          </div>
-
-          {/* BP */}
-          <div className={`${darkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white to-red-50/30 border-gray-200'} p-6 rounded-2xl border-2 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]`}>
-            <h3 className={`text-lg font-bold ${darkMode ? 'text-gray-200' : 'text-gray-800'} mb-3 flex items-center gap-2`}>
-              <span className="text-2xl">❤️</span>
-              <span>Blood Pressure</span>
-            </h3>
-            <div className="text-4xl font-bold text-red-600 mb-2">
-              {dashboard.metrics.avg_bp || 'N/A'}
-            </div>
-            <p className={`text-sm font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}>
-              <span>Trend:</span>
-              <span className={`px-2 py-1 rounded-lg ${
-                dashboard.metrics.bp_trend === 'stable' 
-                  ? 'bg-green-100 text-green-700' 
-                  : dashboard.metrics.bp_trend === 'increasing'
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-blue-100 text-blue-700'
-              }`}>
-                {dashboard.metrics.bp_trend === 'stable' ? '→ Stable' : dashboard.metrics.bp_trend === 'increasing' ? '↑ Increasing' : '↓ Decreasing'}
-              </span>
-            </p>
-          </div>
-
-          {/* Glucose */}
-          <div className={`${darkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white to-amber-50/30 border-gray-200'} p-6 rounded-2xl border-2 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]`}>
-            <h3 className={`text-lg font-bold ${darkMode ? 'text-gray-200' : 'text-gray-800'} mb-3 flex items-center gap-2`}>
-              <span className="text-2xl">🩸</span>
-              <span>Glucose Level</span>
-            </h3>
-            <div className="text-4xl font-bold text-amber-600 mb-2">
-              {dashboard.metrics.avg_glucose?.toFixed(0) || 'N/A'} <span className="text-lg text-gray-500">mg/dL</span>
-            </div>
-            <p className={`text-sm font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}>
-              <span>Trend:</span>
-              <span className={`px-2 py-1 rounded-lg ${
-                dashboard.metrics.glucose_trend === 'stable' 
-                  ? 'bg-green-100 text-green-700' 
-                  : dashboard.metrics.glucose_trend === 'increasing'
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-blue-100 text-blue-700'
-              }`}>
-                {dashboard.metrics.glucose_trend === 'stable' ? '→ Stable' : dashboard.metrics.glucose_trend === 'increasing' ? '↑ Increasing' : '↓ Decreasing'}
-              </span>
-            </p>
-          </div>
-
-          {/* Peak Flow */}
-          {dashboard.metrics.avg_peak_flow && (
-            <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-6 rounded-lg border shadow-md hover:shadow-lg transition-all`}>
-              <h3 className={`font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                🫁 Peak Flow
-              </h3>
-              <div className="text-3xl font-bold text-blue-600 mb-2">
-                {dashboard.metrics.avg_peak_flow?.toFixed(0) || 'N/A'} L/min
-              </div>
-              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                Trend: {dashboard.metrics.peak_flow_trend} {dashboard.metrics.peak_flow_trend === 'stable' ? '→' : dashboard.metrics.peak_flow_trend === 'increasing' ? '↑' : '↓'}
-              </p>
-            </div>
-          )}
-
-          {/* Alerts */}
-          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-6 rounded-lg border shadow-md hover:shadow-lg transition-all`}>
-            <h3 className={`font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-              ⚠️ This Week
-            </h3>
-            <div className={`text-3xl font-bold mb-2 ${dashboard.metrics.alerts_count > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-              {dashboard.metrics.alerts_count}
-            </div>
-            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              {dashboard.metrics.alerts_count > 0 ? 'Alerts to review' : 'No alerts!'}
-            </p>
-          </div>
-        </div>
-
-      {/* Triage Component */}
-      <div className="mb-6">
         <TriageComponent userId={userId} />
-      </div>
-
-      {/* AI Insights */}
-      <div className="mb-6">
         <AIInsights userId={userId} />
+        <QuickActionFAB userId={userId} onDataLogged={() => setRefreshKey(k => k + 1)} />
       </div>
-
-      {/* Recent Alerts */}
-      {dashboard.recent_alerts && dashboard.recent_alerts.length > 0 && (
-        <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-6 rounded-lg border mb-6 shadow-md`}>
-          <h3 className={`font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-4`}>
-            🚨 Recent Alerts
-          </h3>
-          <div className="space-y-3">
-            {dashboard.recent_alerts.slice(0, 5).map((alert: any) => (
-              <div
-                key={alert.id}
-                className={`p-4 rounded-lg border ${
-                  alert.level === 'red'
-                    ? darkMode
-                      ? 'bg-red-900 border-red-700'
-                      : 'bg-red-50 border-red-200'
-                    : darkMode
-                    ? 'bg-amber-900 border-amber-700'
-                    : 'bg-amber-50 border-amber-200'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <span className={`font-semibold ${alert.level === 'red' ? 'text-red-600' : 'text-amber-600'}`}>
-                    {alert.level === 'red' ? '🚨' : '⚠️'} {alert.level.toUpperCase()}
-                  </span>
-                  <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {new Date(alert.timestamp).toLocaleDateString()}
-                  </span>
-                </div>
-                <p className={`text-sm mt-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {alert.reason_codes.join(', ')}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Quick Action FAB */}
-      <QuickActionFAB userId={userId} onDataLogged={() => setRefreshKey(k => k + 1)} />
-    </div>
     </div>
   );
 }
