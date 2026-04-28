@@ -33,8 +33,7 @@ export default function CriticalSymptomAlert({
             icon: '/favicon.ico',
             badge: '/favicon.ico',
             tag: `critical-symptom-${symptomName}`,
-            requireInteraction: true,
-            vibrate: [200, 100, 200], // Vibrate pattern for mobile
+            requireInteraction: true
           });
         }
       }
