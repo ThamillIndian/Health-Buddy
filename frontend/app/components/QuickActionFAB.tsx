@@ -92,7 +92,7 @@ export default function QuickActionFAB({ userId, onDataLogged }: QuickActionFABP
                 <div>
                   <QuickLog
                     userId={userId}
-                    onSuccess={() => {
+                    onEventLogged={() => {
                       onDataLogged?.();
                       handleClose();
                     }}
