@@ -277,9 +277,9 @@ export class NotificationService {
       console.log('✅ Service Worker registered');
 
       // Set up background sync if available
-      if ('SyncManager' in window && registration.sync) {
+      if ('SyncManager' in window && 'sync' in registration) {
         try {
-          await registration.sync.register('check-medications');
+          await (registration as any).sync.register('check-medications');
           console.log('✅ Background sync registered');
         } catch (error) {
           console.warn('⚠️ Background sync not available:', error);
