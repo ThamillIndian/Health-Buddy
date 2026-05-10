@@ -22,8 +22,10 @@ interface MissedMedication {
   notes?: string;
 }
 
+import { useUserId } from '@/app/hooks/useUserId';
+
 export default function HealthRecordsPage() {
-  const [userId, setUserId] = useState<string | null>(null);
+  const { userId, loading: userLoading } = useUserId();
   const [events, setEvents] = useState<HealthEvent[]>([]);
   const [missedMeds, setMissedMeds] = useState<MissedMedication[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,13 +35,11 @@ export default function HealthRecordsPage() {
   const [filter, setFilter] = useState<'all' | 'vital' | 'taken_medicines' | 'un_taken_medicines' | 'symptom'>('all');
 
   useEffect(() => {
-    const id = localStorage.getItem('userId');
-    if (id) {
-      setUserId(id);
-      loadEvents(id);
-      loadMissedMedications(id);
+    if (userId) {
+      loadEvents(userId);
+      loadMissedMedications(userId);
     }
-  }, []);
+  }, [userId]);
 
   const loadEvents = async (id: string) => {
     try {

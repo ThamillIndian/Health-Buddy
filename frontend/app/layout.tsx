@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "./contexts/AuthContext";
 
 export const metadata: Metadata = {
   title: "Chronic Health Buddy",
@@ -48,7 +49,9 @@ export default function RootLayout({
           media="(device-width: 812px) and (device-height: 1707px) and (-webkit-device-pixel-ratio: 3)"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/app/components/Header';
 import { apiClient } from '@/app/utils/api';
+import { useAuth } from '@/app/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { user, signOut } = useAuth();
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
@@ -19,46 +22,104 @@ export default function SettingsPage() {
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const id = localStorage.getItem('userId');
-    const name = localStorage.getItem('userName');
-    const email = localStorage.getItem('userEmail');
+    const loadUserProfile = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-    if (id) {
-      setUserId(id);
-      setUserName(name || '');
-      setUserEmail(email || '');
-    }
-  }, []);
+      try {
+        // Get user data from Supabase Auth
+        setUserEmail(user.email || '');
+        setUserName(user.user_metadata?.name || '');
+
+        // Try to fetch additional profile data from database
+        const { data: profileData, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('auth_id', user.id)
+          .single();
+
+        if (profileData) {
+          setUserId(profileData.id);
+          setUserName(profileData.name || user.user_metadata?.name || '');
+          setLanguage(profileData.language || 'en');
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserProfile();
+  }, [user]);
 
   const handleSaveProfile = async () => {
-    if (!userId) return;
+    if (!user) return;
 
     try {
       setSaving(true);
-      await apiClient.updateUser(userId, {
-        name: userName,
-        email: userEmail,
-        language,
+
+      // Update Supabase Auth metadata
+      const { error: authError } = await supabase.auth.updateUser({
+        data: {
+          name: userName,
+        }
       });
-      localStorage.setItem('userName', userName);
-      localStorage.setItem('userEmail', userEmail);
+
+      if (authError) throw authError;
+
+      // Update profile in database if userId exists
+      if (userId) {
+        const { error: dbError } = await supabase
+          .from('users')
+          .update({
+            name: userName,
+            language: language,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('auth_id', user.id);
+
+        if (dbError) throw dbError;
+      }
+
       setMessage('✅ Profile updated successfully!');
       setTimeout(() => setMessage(''), 3000);
-    } catch (error) {
-      setMessage('❌ Failed to update profile');
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      setMessage('❌ Failed to update profile: ' + (error.message || 'Unknown error'));
+      setTimeout(() => setMessage(''), 5000);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userEmail');
-    router.push('/');
+  const handleLogout = async () => {
+    await signOut();
   };
+
+  if (loading) {
+    return (
+      <div>
+        <Header
+          title="Settings"
+          subtitle="Manage your preferences and account"
+        />
+        <div className="p-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading profile...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -69,8 +130,30 @@ export default function SettingsPage() {
 
       <div className="p-6">
         <div className="max-w-2xl space-y-6">
+          {/* User Info Banner */}
+          {user && (
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-lg shadow-lg">
+              <div className="flex items-center gap-4">
+                <div className="bg-white/20 p-3 rounded-full">
+                  <span className="text-3xl">👤</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">{userName || 'User'}</h3>
+                  <p className="text-blue-100">{userEmail}</p>
+                  <p className="text-xs text-blue-200 mt-1">
+                    Signed in via {user.app_metadata?.provider || 'email'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {message && (
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 font-semibold">
+            <div className={`p-4 rounded-lg font-semibold ${
+              message.includes('✅') 
+                ? 'bg-green-50 border border-green-200 text-green-700'
+                : 'bg-red-50 border border-red-200 text-red-700'
+            }`}>
               {message}
             </div>
           )}
@@ -97,9 +180,11 @@ export default function SettingsPage() {
                 <input
                   type="email"
                   value={userEmail}
-                  onChange={(e) => setUserEmail(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                  readOnly
+                  className="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                  title="Email cannot be changed (managed by authentication)"
                 />
+                <p className="text-xs text-gray-500 mt-1">Email is managed by your authentication provider</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

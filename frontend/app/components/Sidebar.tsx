@@ -1,21 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { useAuth } from '@/app/contexts/AuthContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
+  const { signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(true);
 
   const isActive = (path: string) => pathname === path;
 
-  const handleLogout = () => {
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userEmail');
-    router.push('/');
+  const handleLogout = async () => {
+    await signOut();
   };
 
   const navItems = [

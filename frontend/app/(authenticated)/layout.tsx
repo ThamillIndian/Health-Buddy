@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/app/components/Sidebar';
 import { NotificationService } from '@/app/utils/notificationService';
+import { useAuth } from '@/app/contexts/AuthContext';
 
 export default function AuthLayout({
   children,
@@ -11,54 +12,40 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, loading } = useAuth();
+  const [notificationsInit, setNotificationsInit] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const userId = localStorage.getItem('userId');
-      
-      if (!userId) {
-        router.push('/');
-        return;
-      }
+    // Redirect to signin if not authenticated
+    if (!loading && !user) {
+      router.push('/signin');
+    }
 
-      try {
-        // Verify user with backend
-        const response = await fetch(`http://localhost:8000/api/users/${userId}`);
-        if (response.ok) {
-          setIsAuthenticated(true);
-
-          // Initialize PWA and notifications
-          try {
-            await NotificationService.initialize(userId);
-            console.log('✅ PWA and notifications initialized');
-          } catch (error) {
-            console.warn('⚠️ Could not initialize PWA:', error);
-          }
-        } else {
-          localStorage.removeItem('userId');
-          router.push('/');
+    // Initialize notifications when user is authenticated
+    if (user && !notificationsInit) {
+      const initNotifications = async () => {
+        try {
+          await NotificationService.initialize(user.id);
+          console.log('✅ PWA and notifications initialized');
+          setNotificationsInit(true);
+        } catch (error) {
+          console.warn('⚠️ Could not initialize PWA:', error);
         }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        localStorage.removeItem('userId');
-        router.push('/');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      };
 
-    checkAuth();
+      initNotifications();
+    }
 
     // Cleanup on unmount
     return () => {
-      NotificationService.cleanup();
+      if (notificationsInit) {
+        NotificationService.cleanup();
+      }
     };
-  }, [router]);
+  }, [user, loading, router, notificationsInit]);
 
-  if (isLoading) {
+  // Show loading while checking authentication
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
         <div className="text-center">
@@ -69,7 +56,8 @@ export default function AuthLayout({
     );
   }
 
-  if (!isAuthenticated) {
+  // Don't render anything if not authenticated
+  if (!user) {
     return null;
   }
 
