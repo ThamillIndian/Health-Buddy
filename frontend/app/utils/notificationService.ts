@@ -301,8 +301,8 @@ export class NotificationService {
     try {
       const registration = await navigator.serviceWorker.ready;
 
-      if (registration.sync) {
-        await registration.sync.register('check-medications');
+      if ('sync' in registration) {
+        await (registration as any).sync.register('check-medications');
         console.log('✅ Background sync requested');
       }
     } catch (error) {
