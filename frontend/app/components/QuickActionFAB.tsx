@@ -104,7 +104,10 @@ export default function QuickActionFAB({ userId, onDataLogged }: QuickActionFABP
                 <div>
                   <VoiceInput
                     userId={userId}
-                    onSuccess={() => {
+                    onTranscribe={(text) => {
+                      console.log('Transcribed:', text);
+                    }}
+                    onNormalize={(event) => {
                       onDataLogged?.();
                       handleClose();
                     }}
