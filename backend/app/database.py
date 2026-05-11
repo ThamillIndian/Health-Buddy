@@ -44,8 +44,8 @@ else:
     engine = create_engine(
         DATABASE_URL,
         pool_pre_ping=True,
-        pool_size=10,
-        max_overflow=20
+        pool_size=2,
+        max_overflow=3
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
