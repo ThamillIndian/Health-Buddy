@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/app/utils/api';
 import { MEDICATIONS } from '@/app/utils/constants';
+import { DEMO_MODE, mockMedications } from '@/app/lib/mockData';
 
 interface MedicationManagerProps {
   userId: string;
@@ -36,6 +37,12 @@ export default function MedicationManager({ userId, onClose }: MedicationManager
 
   // Load medications
   const loadMedications = async () => {
+    if (DEMO_MODE) {
+      // Use mock data in demo mode
+      setMedications(mockMedications as any);
+      return;
+    }
+    
     try {
       const response = await apiClient.getMedications(userId);
       setMedications(response.data);

@@ -9,6 +9,7 @@ import TrendsChart from './TrendsChart';
 import AchievementBadges from './AchievementBadges';
 import QuickActionFAB from './QuickActionFAB';
 import { apiClient } from '@/app/utils/api';
+import { DEMO_MODE, mockDashboardData } from '@/app/lib/mockData';
 
 interface DashboardProps {
   userId: string;
@@ -16,7 +17,20 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ userId, refreshTrigger }: DashboardProps) {
-  const { dashboard, loading, error } = useHealthData(userId);
+  const { dashboard: realDashboard, loading: realLoading, error: realError } = useHealthData(userId);
+  
+  // Use mock data if DEMO_MODE is enabled
+  const dashboard = DEMO_MODE ? {
+    status: 'green',
+    metrics: {
+      adherence_pct: mockDashboardData.adherence.rate,
+      days_logged: 30,
+      consecutive_streak: 7
+    }
+  } : realDashboard;
+  
+  const loading = DEMO_MODE ? false : realLoading;
+  const error = DEMO_MODE ? null : realError;
   const [darkMode, setDarkMode] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [criticalAlerts, setCriticalAlerts] = useState<any[]>([]);

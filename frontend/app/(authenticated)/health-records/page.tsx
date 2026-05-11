@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Header from '@/app/components/Header';
 import { apiClient } from '@/app/utils/api';
 import { MEDICATIONS } from '@/app/utils/constants';
+import { DEMO_MODE, mockHealthEvents, mockMedications, mockAdherenceLogs } from '@/app/lib/mockData';
 
 interface HealthEvent {
   id: string;
@@ -42,6 +43,17 @@ export default function HealthRecordsPage() {
   }, [userId]);
 
   const loadEvents = async (id: string) => {
+    if (DEMO_MODE) {
+      // Use mock data in demo mode
+      setLoading(true);
+      // Simulate API delay
+      setTimeout(() => {
+        setEvents(mockHealthEvents as any);
+        setLoading(false);
+      }, 300);
+      return;
+    }
+    
     try {
       setLoading(true);
       const response = await apiClient.getEvents(id, 30);
@@ -54,6 +66,26 @@ export default function HealthRecordsPage() {
   };
 
   const loadMissedMedications = async (id: string) => {
+    if (DEMO_MODE) {
+      // In demo mode, show 1-2 "missed" medications
+      const today = new Date();
+      const todayMorning = new Date(today);
+      todayMorning.setHours(8, 0, 0, 0);
+      
+      setMissedMeds([
+        {
+          id: 'missed-1',
+          medication_id: '2',
+          medication_name: 'Metformin',
+          medication_strength: '500mg',
+          scheduled_time: todayMorning.toISOString(),
+          status: 'pending',
+          notes: 'Evening dose'
+        }
+      ]);
+      return;
+    }
+    
     try {
       // Get all medications
       const medsResponse = await apiClient.getMedications(id);
