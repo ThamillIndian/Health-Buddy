@@ -67,67 +67,152 @@ export const mockMedications = [
   }
 ];
 
-// Mock Health Events (BP, Glucose, Weight)
+// Mock Health Events (BP, Glucose, Weight, Medications)
 export const mockHealthEvents = dates.flatMap((date, dayIndex) => {
   const events = [];
   const trendFactor = dayIndex / dates.length; // Improvement over time
   
-  // Morning BP
+  // Morning vitals (combined BP and Glucose)
   const systolic = Math.floor(135 - (10 * trendFactor) + (Math.random() * 16 - 8));
   const diastolic = Math.floor(85 + (Math.random() * 10 - 5));
-  
-  const morningTime = new Date(date);
-  morningTime.setHours(8, 0, 0, 0);
-  
-  events.push({
-    id: `bp-morning-${dayIndex}`,
-    timestamp: morningTime.toISOString(),
-    type: 'blood_pressure',
-    payload: { systolic, diastolic, unit: 'mmHg' },
-    source: 'manual'
-  });
-  
-  // Morning Glucose
   const glucose = Math.floor(110 - (15 * trendFactor) + (Math.random() * 25 - 10));
   
-  const glucoseTime = new Date(date);
-  glucoseTime.setHours(8, 30, 0, 0);
+  const morningVitalTime = new Date(date);
+  morningVitalTime.setHours(8, 0, 0, 0);
   
   events.push({
-    id: `glucose-morning-${dayIndex}`,
-    timestamp: glucoseTime.toISOString(),
-    type: 'blood_glucose',
-    payload: { value: glucose, unit: 'mg/dL', context: 'fasting' },
+    id: `vital-morning-${dayIndex}`,
+    timestamp: morningVitalTime.toISOString(),
+    type: 'vital',
+    payload: { 
+      bp: `${systolic}/${diastolic}`,
+      systolic: systolic,
+      diastolic: diastolic,
+      glucose: glucose,
+      unit: 'mmHg'
+    },
     source: 'manual'
   });
   
-  // Evening BP
+  // Morning medications taken (Amlodipine, Metformin, Aspirin)
+  const morningMedTime = new Date(date);
+  morningMedTime.setHours(8, 15, 0, 0);
+  
+  // 87% adherence rate
+  if (Math.random() < 0.87) {
+    events.push({
+      id: `med-amlodipine-${dayIndex}`,
+      timestamp: morningMedTime.toISOString(),
+      type: 'medication',
+      payload: {
+        action: 'taken',
+        medication_id: '1',
+        medication_name: 'Amlodipine',
+        medication_strength: '5mg'
+      },
+      source: 'manual'
+    });
+  }
+  
+  if (Math.random() < 0.87) {
+    events.push({
+      id: `med-metformin-morning-${dayIndex}`,
+      timestamp: new Date(morningMedTime.getTime() + 2 * 60 * 1000).toISOString(),
+      type: 'medication',
+      payload: {
+        action: 'taken',
+        medication_id: '2',
+        medication_name: 'Metformin',
+        medication_strength: '500mg'
+      },
+      source: 'manual'
+    });
+  }
+  
+  if (Math.random() < 0.87) {
+    events.push({
+      id: `med-aspirin-${dayIndex}`,
+      timestamp: new Date(morningMedTime.getTime() + 5 * 60 * 1000).toISOString(),
+      type: 'medication',
+      payload: {
+        action: 'taken',
+        medication_id: '4',
+        medication_name: 'Aspirin',
+        medication_strength: '75mg'
+      },
+      source: 'manual'
+    });
+  }
+  
+  // Evening vitals (BP only)
   const systolicEve = Math.floor(135 - (10 * trendFactor) + (Math.random() * 15 - 5));
   const diastolicEve = Math.floor(85 + (Math.random() * 14 - 3));
   
-  const eveningTime = new Date(date);
-  eveningTime.setHours(20, 0, 0, 0);
+  const eveningVitalTime = new Date(date);
+  eveningVitalTime.setHours(20, 0, 0, 0);
   
   events.push({
-    id: `bp-evening-${dayIndex}`,
-    timestamp: eveningTime.toISOString(),
-    type: 'blood_pressure',
-    payload: { systolic: systolicEve, diastolic: diastolicEve, unit: 'mmHg' },
+    id: `vital-evening-${dayIndex}`,
+    timestamp: eveningVitalTime.toISOString(),
+    type: 'vital',
+    payload: { 
+      bp: `${systolicEve}/${diastolicEve}`,
+      systolic: systolicEve,
+      diastolic: diastolicEve,
+      unit: 'mmHg'
+    },
     source: 'manual'
   });
   
+  // Evening medications (Metformin, Atorvastatin)
+  const eveningMedTime = new Date(date);
+  eveningMedTime.setHours(20, 15, 0, 0);
+  
+  if (Math.random() < 0.87) {
+    events.push({
+      id: `med-metformin-evening-${dayIndex}`,
+      timestamp: eveningMedTime.toISOString(),
+      type: 'medication',
+      payload: {
+        action: 'taken',
+        medication_id: '2',
+        medication_name: 'Metformin',
+        medication_strength: '500mg'
+      },
+      source: 'manual'
+    });
+  }
+  
+  if (Math.random() < 0.87) {
+    events.push({
+      id: `med-atorvastatin-${dayIndex}`,
+      timestamp: new Date(eveningMedTime.getTime() + 3 * 60 * 1000).toISOString(),
+      type: 'medication',
+      payload: {
+        action: 'taken',
+        medication_id: '3',
+        medication_name: 'Atorvastatin',
+        medication_strength: '20mg'
+      },
+      source: 'manual'
+    });
+  }
+  
   // Weight (every 3 days)
   if (dayIndex % 3 === 0) {
-    const weight = 75 + (Math.random() * 1 - 0.5);
+    const weight = parseFloat((75 + (Math.random() * 1 - 0.5)).toFixed(1));
     
     const weightTime = new Date(date);
     weightTime.setHours(7, 30, 0, 0);
     
     events.push({
-      id: `weight-${dayIndex}`,
+      id: `vital-weight-${dayIndex}`,
       timestamp: weightTime.toISOString(),
-      type: 'weight',
-      payload: { value: parseFloat(weight.toFixed(1)), unit: 'kg' },
+      type: 'vital',
+      payload: { 
+        weight: weight,
+        unit: 'kg'
+      },
       source: 'manual'
     });
   }
