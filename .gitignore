@@ -46,8 +46,8 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Reports (generated PDFs)
-reports/
+# Reports (generated PDFs - backend only)
+backend/reports/
 *.pdf
 
 # Testing
