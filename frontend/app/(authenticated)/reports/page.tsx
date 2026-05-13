@@ -6,7 +6,7 @@ import { useUserId } from '@/app/hooks/useUserId';
 import api from '@/app/utils/api';
 import { DEMO_MODE, mockDashboardData, mockMedications, mockHealthEvents } from '@/app/lib/mockData';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 export default function ReportsPage() {
   const { userId, loading: userLoading } = useUserId();
@@ -153,7 +153,7 @@ export default function ReportsPage() {
       med.notes || 'No notes'
     ]);
     
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: 30,
       head: [['Medication', 'Strength', 'Frequency', 'Notes']],
       body: medTableData,
