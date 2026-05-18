@@ -148,7 +148,7 @@ Millions of people manage chronic conditions like diabetes, hypertension, and as
 - **Speech-to-Text**: Sarvam AI (Saaras V3)
 
 ### **Infrastructure**
-- **Deployment**: Docker-ready
+- **Deployment**: Vercel + Render
 - **Version Control**: Git
 - **API**: RESTful with CORS support
 - **Authentication**: localStorage + session management
@@ -578,20 +578,6 @@ Full API docs available at `http://localhost:8000/docs`
 
 ---
 
-## 👥 Team & Contact
-
-### **Built During Hackathon**
-- **Duration**: 1-day sprint
-- **Team Size**: Solo/Team
-- **Focus**: Real-world health impact
-
-### **Get in Touch**
-- 📧 Email: [your-email@example.com]
-- 🌐 GitHub: [your-github-repo]
-- 💼 LinkedIn: [your-profile]
-
----
-
 ## 📄 License
 
 MIT License - Free to use, modify, and distribute
@@ -601,21 +587,9 @@ MIT License - Free to use, modify, and distribute
 ## 🙏 Acknowledgments
 
 - **Sarvam AI** - For multilingual speech-to-text
-- **LM Studio** - For local LLM support
 - **Next.js** - For the excellent React framework
 - **FastAPI** - For the modern Python API framework
 - **Clinical Guidelines** - WHO, IDA, ESC/ESH, FDA
-
----
-
-## 🌟 Quick Links
-
-- 📖 [Plan Document](./plan.md)
-- 🔬 [Clinical Validation Guide](./CLINICAL_VALIDATION_GUIDE.md)
-- 🏗️ [Multi-Page Architecture](./MULTI_PAGE_ARCHITECTURE_COMPLETE.md)
-- 🚀 [PWA Implementation](./PWA_IMPLEMENTATION_COMPLETE.md)
-- 📋 [Feature Checklist](./FEATURE_CHECKLIST.md)
-- 🎯 [Deployment Guide](./DEPLOYMENT_GUIDE.md)
 
 ---
 
