@@ -5,6 +5,13 @@
 [![Status: Active](https://img.shields.io/badge/Status-Active%20Development-brightgreen)]()
 [![Built with: Next.js + FastAPI](https://img.shields.io/badge/Built%20with-Next.js%20%2B%20FastAPI-blue)]()
 
+## 🚀 Live Demo
+
+| Service | URL |
+|---------|-----|
+| **Frontend** | [https://health-buddy-n7yh.vercel.app](https://health-buddy-n7yh.vercel.app) |
+| **Backend API** | [https://health-buddy-atcs.onrender.com](https://health-buddy-atcs.onrender.com) |
+
 ---
 
 ## 🎯 Problem Statement
