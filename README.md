@@ -5,6 +5,14 @@
 [![Status: Active](https://img.shields.io/badge/Status-Active%20Development-brightgreen)]()
 [![Built with: Next.js + FastAPI](https://img.shields.io/badge/Built%20with-Next.js%20%2B%20FastAPI-blue)]()
 
+## 🎬 Demo Video
+
+Click the thumbnail below to watch the full demo on YouTube:
+
+[![Chronic Health Buddy — Demo Video](https://img.youtube.com/vi/ln0tHR2jzA8/maxresdefault.jpg)](https://youtu.be/ln0tHR2jzA8)
+
+**▶️ [Watch Demo Video](https://youtu.be/ln0tHR2jzA8)**
+
 ## 🚀 Live Demo
 
 | Service | URL |
